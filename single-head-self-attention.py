@@ -122,15 +122,30 @@ W_v = torch.tensor([
 # q_a[0] is computed by:
 # x_a dot the 1st column of W_q
 # x_a = [1.0, 0.0, 1.0, 0.0]
-# 1st column of W_q = [-0.3168, 2.0308, 0.7700,1.1263]
+
+# q_a[1] = x_a dot 1st column of W_q = [-0.3168, 2.0308, 0.7700,1.1263]
 # = 1*(-0.3168) + 0*(2.0308) + 1*(0.7700) + 0*(1.1263)
 # = 0.4532
 #
 # Similarly:
 # q_a[1] = x_a dot the 2nd column of W_q = -0.5358
-# q_a[2] = x_a dot the 3rd column of W_q = -1.2009
-# q_a[3] = x_a dot the 4th column of W_q = 2.3768
+# q_a[1] = x_a · (2nd column of W_q)
+#       = 1×(-0.9835) + 0×(1.3919) + 1×(0.4477) + 0×(0.5792)
+#       = -0.9835 + 0.4477
+#       = -0.5358
 #
+# q_a[2] = x_a dot the 3rd column of W_q = -1.2009
+# q_a[2] = x_a · (3rd column of W_q)
+#       = 1×(-1.1622) + 0×(-1.3933) + 1×(-0.0387) + 0×(0.0683)
+#       = -1.1622 + (-0.0387)
+#       = -1.2009
+#
+# q_a[3] = x_a dot the 4th column of W_q = 2.3768
+# q_a[3] = x_a · (4th column of W_q)
+#       = 1×(0.8748) + 0×(0.5404) + 1×(1.5020) + 0×(1.0678)
+#       = 0.8748 + 1.5020
+#       = 2.3768
+       
 # So:
 # q_a = [0.4532, -0.5358, -1.2009, 2.3768]
 #
