@@ -182,7 +182,7 @@ print("V =", V)
 # pelase see calculateScores
 # the result is as the same as  scores = Q @ K.T
 scores = Q @ K.T
-print("scores=", V)
+print("scores=", scores)
 
 
 weights = torch.softmax(scores / math.sqrt(4), dim=-1)
