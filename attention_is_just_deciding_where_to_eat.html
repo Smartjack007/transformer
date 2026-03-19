@@ -151,13 +151,13 @@
 <div class="container">
 
   <h1>Attention Is Just Deciding Where To Eat</h1>
-  <p class="subtitle">Alex, Emma, and Daniel are trying to pick a restaurant — and in doing so, they reveal the entire logic of attention.</p>
+  <p class="subtitle">Three people are trying to pick a restaurant tonight. Each has their own preferences, and each knows something about the options. The question is: how do you combine everyone's knowledge so that each person ends up with the recommendation that fits them best? That's exactly what attention does.</p>
 
   <hr>
 
-  <h2>1. Three people, three preferences</h2>
+  <h2>1. Three people, three feature profiles</h2>
 
-  <p>Alex likes spicy food, cares about price, and wants fast service. Emma prioritizes comfort and a low bill. Daniel is after atmosphere and genuine flavor.</p>
+  <p>Alex, Emma, and Daniel are going out for dinner tonight. Each person carries a feature profile — a set of traits that characterize who they are and what they care about. These features aren't just preferences. As we'll see, the same profile will be decoded in three different ways: what they're craving, what restaurants they know about, and what specific information they're holding.</p>
 
   <div class="people-row">
     <div class="person-card">
@@ -185,7 +185,7 @@
     </div>
   </div>
 
-  <p>We can encode each person as a vector across six dimensions — <strong>[spicy, cheap, cozy, fast, flavor, vibe]</strong>. This is <strong>embedding</strong> — turning real-world concepts into numbers. Written as a matrix:</p>
+  <p>We encode each person as a vector across six dimensions — <strong>[spicy, cheap, cozy, fast, flavor, vibe]</strong>. This is <strong>embedding</strong> — compressing who someone is into numbers. The same vector X will later be projected three ways to extract three different kinds of meaning:</p>
 
   <div style="overflow-x:auto; margin: 1.5rem 0;">
     \[
@@ -199,45 +199,45 @@
     \]
   </div>
 
-  <p style="color:#888780; font-size:14px;">Each row is one person. Each column is one feature. Everything that follows — Q, K, V — starts here.</p>
+  <p style="color:#888780; font-size:14px;">Each row is one person. Each column is one feature. The same X is the starting point for Q, K, and V — three decoders, three different readings of the same profile.</p>
 
   <hr>
 
-  <h2>2. One person, three roles</h2>
+  <h2>2. One profile, three decoders</h2>
 
-  <p>Here is where most explanations skip something important. In attention, there are three matrices — Q, K, and V — but they don't represent three different groups of people. <strong>Every person plays all three roles simultaneously.</strong> The same input vector gets projected into three separate spaces, each with a different job:</p>
+  <p>The same feature profile X gets run through three different decoders — Q, K, and V. Each decoder is specialized for a different kind of reading. They don't see different people; they see the same person differently:</p>
 
   <div class="role-section">
     <div class="role-card q">
       <div class="role-label">Q</div>
-      <div class="role-title">What do I want right now?</div>
-      <div class="role-desc">Query — the current intent.<br>Alex as the asker: "Am I in the mood for spicy, or do I care more about price today?"</div>
+      <div class="role-title">Decoder for cravings: what do I want to eat?</div>
+      <div class="role-desc">Query — a demand decoder. Given your features, W_Q estimates the strength of what you're hungry for. Alex's profile (spicy, cheap, fast) gets decoded into: "strong street-stall craving, almost no upscale pull."</div>
     </div>
     <div class="role-card k">
       <div class="role-label">K</div>
-      <div class="role-title">Which places do I know about?</div>
-      <div class="role-desc">Key — a signal of what I know.<br>Alex as a pointer: "I know a great spicy spot, and a fast cheap one."</div>
+      <div class="role-title">Decoder for knowledge: where do I know good food?</div>
+      <div class="role-desc">Key — a knowledge decoder. Given your features, W_K infers what type of knowledge you're likely carrying. Alex's profile (spicy, cheap, fast) gets decoded into: "this person knows the street-stall scene well."</div>
     </div>
     <div class="role-card v">
       <div class="role-label">V</div>
-      <div class="role-title">What exactly do I know?</div>
-      <div class="role-desc">Value — the actual knowledge.<br>Alex as an information source: the address, the dish to order, how long the wait is.</div>
+      <div class="role-title">Decoder for content: what are the specific details I'm holding?</div>
+      <div class="role-desc">Value — a content extractor. Given your features, W_V pulls out the actual substance you're carrying: not a label, not a signal — the real information that gets passed forward.</div>
     </div>
   </div>
 
-  <p>Why three separate projections? Because "how you want to be found" and "what you actually contain" are different things, and the model needs the freedom to learn them independently. If you used the raw vector for everything, Q and K would be identical — and the model would lose the ability to distinguish between a token's <em>searchable surface</em> and its <em>actual meaning</em>.</p>
+  <p>Three decoders, three specialized readings of the same profile. Each one extracts something different from the same X.</p>
 
   <div class="callout">
-    <p><strong>K vs V in plain terms:</strong> K is the signal that says "I know about good spicy food" — it's what gets compared against Q to decide whose opinion is worth listening to. V is the actual knowledge: the restaurant name, the address, what to order. You use K to decide who to ask; you use V to get the answer.</p>
+    <p><strong>Q vs K vs V in plain terms:</strong> Q asks "what am I craving?" — it drives the search. K says "I know this type of place" — it's the label that gets matched against Q. V says "here's the actual info" — the restaurant name, the dish, the wait time. Q and K play the matching game; V delivers the goods.</p>
   </div>
 
-  <p>Each role is produced by multiplying X by a learned weight matrix. These matrices are what the model trains — they encode how to project raw preferences into each space:</p>
 
-  <p style="margin-bottom:0.5rem;"><strong>W<sub>Q</sub></strong> ∈ ℝ<sup>6×2</sup> — projects "who I am" into "what I'm asking for"</p>
+
+  <p style="margin-bottom:0.5rem;"><strong>W<sub>Q</sub></strong> ∈ ℝ<sup>6×2</sup> — a demand decoder: given your feature profile, it estimates how strongly you're craving each type of experience</p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     W_Q = \left[\begin{array}{c:c|c}
-     & \text{intent}_1 & \text{intent}_2 \\
+     & \text{street-stall} & \text{upscale} \\
     \hline
     \text{spicy}  & 0.97 & 0.08 \\
     \text{cheap}  & 0.99 & 0.11 \\
@@ -248,15 +248,15 @@
     \end{array}\right]
     \]
   </div>
-  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">Each row is an input feature. Each column is a query direction. spicy contributes to intent₁ ("I'm asking about bold food"), cozy contributes to intent₂ ("I'm asking about atmosphere").<br><br>
-  <strong style="color:#555;">intent₁</strong> — favors spicy, cheap, fast<br>
-  <strong style="color:#555;">intent₂</strong> — favors cozy, vibe</p>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">Each row is an input feature. Each column is a query direction. spicy contributes to street-stall ("I want it spicy, fast, and cheap"), cozy contributes to upscale ("I want good atmosphere and comfort").<br><br>
+  <strong style="color:#555;">street-stall</strong> — cares about spice, price, speed — nothing else matters<br>
+  <strong style="color:#555;">upscale</strong> — cares about vibe and coziness — price and heat are irrelevant</p>
 
-  <p style="margin-bottom:0.5rem;"><strong>W<sub>K</sub></strong> ∈ ℝ<sup>6×2</sup> — projects "who I am" into "what kinds of places I know about"</p>
+  <p style="margin-bottom:0.5rem;"><strong>W<sub>K</sub></strong> ∈ ℝ<sup>6×2</sup> — a knowledge decoder: given your feature profile, it decodes what kinds of places you're likely to know about</p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     W_K = \left[\begin{array}{c:c|c}
-     & \text{knows}_1 & \text{knows}_2 \\
+     & \text{knows-street-stall} & \text{knows-upscale-flavor} \\
     \hline
     \text{spicy}  & 0.96 & 0.09 \\
     \text{cheap}  & 0.98 & 0.11 \\
@@ -267,15 +267,15 @@
     \end{array}\right]
     \]
   </div>
-  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">W<sub>K</sub> and W<sub>Q</sub> are deliberately different. "Asking about bold food" and "knowing about bold food" are two different things — the model needs separate weights to learn them independently.<br><br>
-  <strong style="color:#555;">knows₁</strong> — knows about spicy, cheap, fast places<br>
-  <strong style="color:#555;">knows₂</strong> — knows about cozy, flavor, vibe places</p>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">W<sub>K</sub> and W<sub>Q</sub> are deliberately different. "Craving bold food" and "knowing where bold food is" are two different things — the model needs separate weights to learn them independently.<br><br>
+  <strong style="color:#555;">knows-street-stall</strong> — knows where to find spicy, cheap, fast places<br>
+  <strong style="color:#555;">knows-upscale-flavor</strong> — knows upscale spots with great atmosphere and genuine flavor</p>
 
-  <p style="margin-bottom:0.5rem;"><strong>W<sub>V</sub></strong> ∈ ℝ<sup>6×3</sup> — projects "who I am" into "what I actually know"</p>
+  <p style="margin-bottom:0.5rem;"><strong>W<sub>V</sub></strong> ∈ ℝ<sup>6×3</sup> — a content extractor: given your feature profile, it pulls out the actual knowledge you're holding — no fluff, just the substance</p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     W_V = \left[\begin{array}{c:c:c|c}
-     & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
     \hline
     \text{spicy}  & 0.97 & 0.11 & 0.09 \\
     \text{cheap}  & 0.10 & 0.98 & 0.08 \\
@@ -287,17 +287,17 @@
     \]
   </div>
   <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">V has three output dimensions — it carries content, not a matching signal.<br><br>
-  <strong style="color:#555;">info₁</strong> — spicy, fast related info<br>
-  <strong style="color:#555;">info₂</strong> — cheap, flavor related info<br>
-  <strong style="color:#555;">info₃</strong> — cozy, vibe related info</p>
+  <strong style="color:#555;">info-sichuan</strong> — knows Sichuan-style spots: spicy, fast — which restaurants, how long they've been open, what to order<br>
+  <strong style="color:#555;">info-budget</strong> — knows budget-friendly spots with real flavor: cheap eats that actually taste good<br>
+  <strong style="color:#555;">info-upscale</strong> — knows the upscale scene: cozy, great vibe, places worth the price</p>
 
   <hr>
 
-  <h2>3. Alignment scores — who matches whom?</h2>
+  <h2>3. Alignment scores</h2>
 
-  <p>Now we can compute Q and K by multiplying X through the weight matrices.</p>
+  <p>Now we run X through each decoder to extract what each person is craving, what they know, and what content they're holding.</p>
 
-  <p style="margin-bottom:0.5rem;"><strong>Q = X W<sub>Q</sub></strong> — what each person is asking for</p>
+  <p style="margin-bottom:0.5rem;"><strong>Q = X W<sub>Q</sub></strong> — "you have these features, let me decode what you're craving and how strongly"</p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     Q = X W_Q =
@@ -311,7 +311,7 @@
     \end{bmatrix}
     =
     \begin{bmatrix}
-     & \text{intent}_1 & \text{intent}_2 \\
+     & \text{street-stall} & \text{upscale} \\
     \text{Alex}   & 2.885 & 0.474 \\
     \text{Emma}   & 1.293 & 1.210 \\
     \text{Daniel} & 0.742 & 1.921
@@ -319,12 +319,12 @@
     \]
   </div>
   <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
-    <strong style="color:#555;">Alex</strong> [2.885, 0.474] — his question is strongly in the intent₁ direction. He is asking "where can I get something spicy, fast, and cheap?"<br>
-    <strong style="color:#555;">Emma</strong> [1.293, 1.210] — balanced between both directions. She cares about both taste and atmosphere.<br>
-    <strong style="color:#555;">Daniel</strong> [0.742, 1.921] — strongly in the intent₂ direction. He is asking "where has a good vibe and is cozy?"
+    <strong style="color:#555;">Alex</strong> [2.885, 0.474] — W_Q decoded his profile (spicy↑ cheap↑ fast↑) into a strong street-stall craving. He didn't say it out loud — his features gave it away.<br>
+    <strong style="color:#555;">Emma</strong> [1.293, 1.210] — balanced craving in both directions. Her mixed profile (cheap↑ cozy↑) doesn't pull strongly either way.<br>
+    <strong style="color:#555;">Daniel</strong> [0.742, 1.921] — W_Q decoded his profile (cozy↑ flavor↑ vibe↑) into a strong upscale craving. He wants atmosphere and quality, not speed or heat.
   </p>
 
-  <p style="margin-bottom:0.5rem;"><strong>K = X W<sub>K</sub></strong> — what each person knows about</p>
+  <p style="margin-bottom:0.5rem;"><strong>K = X W<sub>K</sub></strong> — "you have these features, let me infer what knowledge you're carrying"</p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     K = X W_K =
@@ -338,7 +338,7 @@
     \end{bmatrix}
     =
     \begin{bmatrix}
-     & \text{knows}_1 & \text{knows}_2 \\
+     & \text{knows-street-stall} & \text{knows-upscale-flavor} \\
     \text{Alex}   & 2.850 & 0.610 \\
     \text{Emma}   & 1.260 & 1.338 \\
     \text{Daniel} & 0.701 & 2.796
@@ -346,13 +346,13 @@
     \]
   </div>
   <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
-    <strong style="color:#555;">Alex</strong> [2.850, 0.610] — knows mainly spicy, cheap, fast places. Very little about cozy or vibe.<br>
-    <strong style="color:#555;">Emma</strong> [1.260, 1.338] — knows a bit of both. Balanced knowledge.<br>
-    <strong style="color:#555;">Daniel</strong> [0.701, 2.796] — knows mainly cozy, flavor, vibe places. Little about efficiency or heat.<br><br>
+    <strong style="color:#555;">Alex</strong> [2.850, 0.610] — W_K decoded his profile (spicy↑ cheap↑ fast↑) into strong street-stall knowledge. People like him tend to know exactly which stalls are worth it.<br>
+    <strong style="color:#555;">Emma</strong> [1.260, 1.338] — balanced knowledge signal. Her mixed profile suggests she has something useful in both directions.<br>
+    <strong style="color:#555;">Daniel</strong> [0.701, 2.796] — W_K decoded his profile (cozy↑ flavor↑ vibe↑) into deep upscale-flavor knowledge. He's the one to ask about atmosphere and quality.<br><br>
     Note: Alex's Q and K are both strong in the first dimension — a near-coincidence of these numbers. In a real model, W<sub>Q</sub> and W<sub>K</sub> are trained separately and almost never produce the same result. That is precisely why two matrices are needed.
   </p>
 
-  <p style="margin-bottom:0.5rem;"><strong>V = X W<sub>V</sub></strong> — what each person actually knows</p>
+  <p style="margin-bottom:0.5rem;"><strong>V = X W<sub>V</sub></strong> — "you have these features, let me extract the actual content you're carrying"</p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     V = X W_V =
@@ -366,7 +366,7 @@
     \end{bmatrix}
     =
     \begin{bmatrix}
-     & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
     \text{Alex}   & 2.031 & 1.303 & 0.479 \\
     \text{Emma}   & 0.404 & 1.217 & 1.189 \\
     \text{Daniel} & 0.526 & 1.320 & 1.949
@@ -374,14 +374,18 @@
     \]
   </div>
   <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
-    <strong style="color:#555;">Alex</strong> [2.031, 1.303, 0.479] — mainly holds spicy/fast info, some cheap/flavor, little about cozy/vibe.<br>
-    <strong style="color:#555;">Emma</strong> [0.404, 1.217, 1.189] — holds cheap/flavor and cozy/vibe info fairly equally, little about spicy/fast.<br>
-    <strong style="color:#555;">Daniel</strong> [0.526, 1.320, 1.949] — mainly holds cozy/vibe info, some cheap/flavor, little about spicy/fast.
+    <strong style="color:#555;">Alex</strong> [2.031, 1.303, 0.479] — W_V extracted mostly Sichuan content from his profile: which stalls, how long open, what to order. His features don't carry much upscale substance.<br>
+    <strong style="color:#555;">Emma</strong> [0.404, 1.217, 1.189] — W_V extracted a balanced content mix: some budget-flavor knowledge, some upscale. She's a useful source in both directions.<br>
+    <strong style="color:#555;">Daniel</strong> [0.526, 1.320, 1.949] — W_V extracted mostly upscale content: the cozy spots, the vibe, which places are worth the price. Little Sichuan substance in his profile.
   </p>
 
-  <p>We compute a score for every (query, key) pair using the <strong>dot product</strong>. The dot product measures how much one vector points in the direction of another — two vectors that are perfectly aligned score high; two that are orthogonal score zero.</p>
+  <hr>
 
-  <p>So the score S[i][j] = Q[i] · K[j] answers: <em>does person i's current intent align with person j's knowledge?</em></p>
+  <h2>4. Scoring craving against knowledge</h2>
+
+  <p>For each person, we take their decoded craving (Q) and score it against every person's decoded knowledge (K) using the <strong>dot product</strong>. The higher the overlap between what one person is craving and what another person knows, the higher the score.</p>
+
+  <p>S[i][j] = Q[i] · K[j] answers: <em>how well does person i's craving align with what person j knows?</em></p>
 
   <p>Expanding each pair explicitly:</p>
 
@@ -434,14 +438,14 @@
   </div>
 
   <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
-    <strong style="color:#555;">Alex → Alex = 8.511 → 6.018</strong> — his intent (intent₁=2.885) strongly matches his own knowledge (knows₁=2.850).<br>
-    <strong style="color:#555;">Alex → Daniel = 3.347 → 2.367</strong> — some overlap, but Alex's intent₁ doesn't align well with Daniel's knows₂-dominant profile.<br>
-    <strong style="color:#555;">Daniel → Daniel = 5.891 → 4.165</strong> — Daniel's intent (intent₂=1.921) strongly aligns with his own knowledge (knows₂=2.796).
+    <strong style="color:#555;">Alex → Alex = 8.511 → 6.018</strong> — his intent (street-stall=2.885) strongly matches his own knowledge (knows-street-stall=2.850).<br>
+    <strong style="color:#555;">Alex → Daniel = 3.347 → 2.367</strong> — some overlap, but Alex's street-stall doesn't align well with Daniel's knows-upscale-flavor-dominant profile.<br>
+    <strong style="color:#555;">Daniel → Daniel = 5.891 → 4.165</strong> — Daniel's intent (upscale=1.921) strongly aligns with his own knowledge (knows-upscale-flavor=2.796).
   </p>
 
   <hr>
 
-  <h2>4. From scores to weights — what softmax actually does</h2>
+  <h2>5. From scores to weights — what softmax actually does</h2>
 
   <p>We now apply softmax to each row of S. Each row represents one person's scores across all others — softmax turns these into attention weights: how much should I draw from each person's knowledge?</p>
 
@@ -486,7 +490,7 @@
 
   <hr>
 
-  <h2>5. The output — combining V by weight</h2>
+  <h2>6. The output — combining V by weight</h2>
 
   <p>The softmax weights tell us how much to trust each person. We apply those weights to each person's <strong>V</strong> — their actual content — and sum the result:</p>
 
@@ -507,7 +511,7 @@
     \end{bmatrix}
     =
     \begin{bmatrix}
-     & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
     \text{Alex}   & 1.909 & 1.270 & 0.533 \\
     \text{Emma}   & 1.142 & 1.292 & 1.068 \\
     \text{Daniel} & 0.697 & 1.310 & 1.666
@@ -520,27 +524,69 @@
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     \begin{aligned}
-    \text{Alex}_{\text{info}_1} &= 0.929\times2.031 + 0.046\times0.404 + 0.024\times0.526 = 1.909 \\
-    \text{Alex}_{\text{info}_2} &= 0.929\times1.303 + 0.046\times1.217 + 0.024\times1.320 = 1.270 \\
-    \text{Alex}_{\text{info}_3} &= 0.929\times0.479 + 0.046\times1.189 + 0.024\times1.949 = 0.533 \\[6pt]
-    \text{Emma}_{\text{info}_1} &= 0.426\times2.031 + 0.186\times0.404 + 0.388\times0.526 = 1.142 \\
-    \text{Emma}_{\text{info}_2} &= 0.426\times1.303 + 0.186\times1.217 + 0.388\times1.320 = 1.292 \\
-    \text{Emma}_{\text{info}_3} &= 0.426\times0.479 + 0.186\times1.189 + 0.388\times1.949 = 1.068 \\[6pt]
-    \text{Daniel}_{\text{info}_1} &= 0.118\times2.031 + 0.138\times0.404 + 0.744\times0.526 = 0.697 \\
-    \text{Daniel}_{\text{info}_2} &= 0.118\times1.303 + 0.138\times1.217 + 0.744\times1.320 = 1.310 \\
-    \text{Daniel}_{\text{info}_3} &= 0.118\times0.479 + 0.138\times1.189 + 0.744\times1.949 = 1.666
+    \text{Alex}_{\text{info-sichuan}} &= 0.929\times2.031 + 0.046\times0.404 + 0.024\times0.526 = 1.909 \\
+    \text{Alex}_{\text{info-budget}} &= 0.929\times1.303 + 0.046\times1.217 + 0.024\times1.320 = 1.270 \\
+    \text{Alex}_{\text{info-upscale}} &= 0.929\times0.479 + 0.046\times1.189 + 0.024\times1.949 = 0.533 \\[6pt]
+    \text{Emma}_{\text{info-sichuan}} &= 0.426\times2.031 + 0.186\times0.404 + 0.388\times0.526 = 1.142 \\
+    \text{Emma}_{\text{info-budget}} &= 0.426\times1.303 + 0.186\times1.217 + 0.388\times1.320 = 1.292 \\
+    \text{Emma}_{\text{info-upscale}} &= 0.426\times0.479 + 0.186\times1.189 + 0.388\times1.949 = 1.068 \\[6pt]
+    \text{Daniel}_{\text{info-sichuan}} &= 0.118\times2.031 + 0.138\times0.404 + 0.744\times0.526 = 0.697 \\
+    \text{Daniel}_{\text{info-budget}} &= 0.118\times1.303 + 0.138\times1.217 + 0.744\times1.320 = 1.310 \\
+    \text{Daniel}_{\text{info-upscale}} &= 0.118\times0.479 + 0.138\times1.189 + 0.744\times1.949 = 1.666
     \end{aligned}
     \]
   </div>
 
   <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
-    <strong style="color:#555;">Alex</strong> [1.909, 1.270, 0.533] — output dominated by info₁ (spicy/fast). He paid 92.9% attention to himself, and his own V is strongest in info₁.<br>
+    <strong style="color:#555;">Alex</strong> [1.909, 1.270, 0.533] — output dominated by info-sichuan (spicy/fast). He paid 92.9% attention to himself, and his own V is strongest in info-sichuan.<br>
     <strong style="color:#555;">Emma</strong> [1.142, 1.292, 1.068] — output spread across all three dimensions. She split attention between Alex and Daniel, whose V vectors complement each other.<br>
-    <strong style="color:#555;">Daniel</strong> [0.697, 1.310, 1.666] — output dominated by info₃ (cozy/vibe). He paid 74.4% attention to himself, and his own V is strongest in info₃.
+    <strong style="color:#555;">Daniel</strong> [0.697, 1.310, 1.666] — output dominated by info-upscale (cozy/vibe). He paid 74.4% attention to himself, and his own V is strongest in info-upscale.
   </p>
 
   <div class="callout">
     <p>The output is a <strong>weighted blend of everyone's real information</strong>. Nobody is ignored entirely — even the lowest-weight person still contributes a little. This is why it's called soft attention, not hard selection.</p>
+  </div>
+
+  <hr>
+
+  <h2>7. V and output — the same knowledge, twice</h2>
+
+  <p>V is the first decoding — each person's raw content extracted from their profile. Output is the second — the same content, redistributed by attention weights.</p>
+
+  <p style="margin-bottom:0.5rem;"><strong>V</strong> — raw content, before blending:</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    V =
+    \begin{bmatrix}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
+    \text{Alex}   & 2.031 & 1.303 & 0.479 \\
+    \text{Emma}   & 0.404 & 1.217 & 1.189 \\
+    \text{Daniel} & 0.526 & 1.320 & 1.949
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="margin-bottom:0.5rem;"><strong>Output</strong> — content after attention reweighting:</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{Output} =
+    \begin{bmatrix}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
+    \text{Alex}   & 1.909 & 1.270 & 0.533 \\
+    \text{Emma}   & 1.142 & 1.292 & 1.068 \\
+    \text{Daniel} & 0.697 & 1.310 & 1.666
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
+    <strong style="color:#555;">Alex</strong> — output stays close to his own V (92.9% self-attention). His craving aligned so strongly with his own knowledge that he barely needed anyone else.<br>
+    <strong style="color:#555;">Emma</strong> — output shifts noticeably. She drew from both Alex and Daniel, so her final content is more balanced than her raw V.<br>
+    <strong style="color:#555;">Daniel</strong> — output stays close to his own V (74.4% self-attention). His upscale craving matched his own upscale content.
+  </p>
+
+  <div class="callout">
+    <p>Attention doesn't invent anything. It just decides how to mix what's already there.</p>
   </div>
 
   <hr>
@@ -552,21 +598,21 @@
       <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">Q</div>
       <div>
         <div class="flow-step-title">Project each token into its current intent</div>
-        <div class="flow-step-sub">Q = X @ W_Q — what am I looking for right now?</div>
+        <div class="flow-step-sub">Q = X @ W_Q — decode my features into craving strengths</div>
       </div>
     </div>
     <div class="flow-step">
       <div class="flow-icon" style="background:#EEEDFE;color:#534AB7;">K</div>
       <div>
         <div class="flow-step-title">Project each token into what it knows about</div>
-        <div class="flow-step-sub">K = X @ W_K — which places do I know?</div>
+        <div class="flow-step-sub">K = X @ W_K — decode my features into knowledge strengths</div>
       </div>
     </div>
     <div class="flow-step">
       <div class="flow-icon" style="background:#E1F5EE;color:#0F6E56;">V</div>
       <div>
         <div class="flow-step-title">Project each token into its actual content</div>
-        <div class="flow-step-sub">V = X @ W_V — what do I actually know?</div>
+        <div class="flow-step-sub">V = X @ W_V — extract the actual content from my features</div>
       </div>
     </div>
     <div class="flow-step">
@@ -593,7 +639,8 @@
   </div>
 
   <div class="summary-box">
-    <p>Attention is <strong>using alignment between intent and label</strong> to decide <strong>how to blend everyone's actual content</strong>. The restaurant analogy holds — you just have to remember that every person is simultaneously the one asking, the one being evaluated, and the one whose knowledge gets mixed into the final answer.</p>
+    <p>Alex ends up with a recommendation dominated by Sichuan info — his craving aligned so strongly with his own knowledge that attention let him mostly listen to himself. Daniel gets the upscale recommendation for the same reason. Emma, with a balanced profile, draws from both sides and gets a more even blend.</p>
+    <p style="margin-top:1rem;">Nobody was ignored. Nobody dominated unfairly. <strong>Attention allocated influence in proportion to alignment</strong> — three people, one shared pool of knowledge, each walking away with the recommendation that fit them best.</p>
   </div>
 
 </div>
