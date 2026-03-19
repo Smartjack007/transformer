@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention, But Make It Multi-Head</title>
+<script>MathJax = { tex: { inlineMath: [['\\(','\\)']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #faf9f7;
+    color: #1a1a18;
+    line-height: 1.75;
+    font-size: 16px;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 700px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  h2 { font-size: 18px; font-weight: 600; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  p  { margin-bottom: 1rem; color: #444441; }
+  p strong { color: #1a1a18; }
+  em { color: #666; }
+
+  .subtitle { font-size: 14px; color: #888780; margin-bottom: 2.5rem; line-height: 1.6; }
+  hr { border: none; border-top: 1px solid #e8e6e0; margin: 2rem 0; }
+
+  .callout {
+    border-left: 3px solid #d3d1c7; padding: 12px 16px;
+    margin: 1.25rem 0; border-radius: 0 8px 8px 0;
+    background: #f4f3ee;
+  }
+  .callout p { margin: 0; font-size: 14px; color: #555; }
+
+  .formula {
+    background: #f4f3ee; border-radius: 8px; padding: 12px 18px;
+    font-family: "SF Mono", "Fira Code", monospace; font-size: 14px;
+    color: #1a1a18; margin: 1rem 0;
+  }
+
+  /* Head cards */
+  .head-section { display: flex; gap: 12px; margin: 1.25rem 0; }
+  .head-card { flex: 1; border-radius: 12px; padding: 16px; border: 1px solid transparent; }
+  .head-card.h1 { background: #FAEEDA; border-color: #FAC775; }
+  .head-card.h2 { background: #E6F1FB; border-color: #B5D4F4; }
+  .head-label { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .head-card.h1 .head-label { color: #BA7517; }
+  .head-card.h2 .head-label { color: #185FA5; }
+  .head-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .head-card.h1 .head-title { color: #BA7517; }
+  .head-card.h2 .head-title { color: #185FA5; }
+  .head-desc { font-size: 12px; color: #555; line-height: 1.55; }
+
+  /* Compare table */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 1rem 0; }
+  .compare-table th {
+    text-align: left; font-weight: 600; font-size: 12px; color: #888780;
+    padding: 4px 10px 8px 0; border-bottom: 1px solid #e8e6e0;
+  }
+  .compare-table td { padding: 8px 10px 8px 0; border-bottom: 1px solid #e8e6e0; color: #444441; font-size: 13px; }
+  .compare-table td:first-child { font-weight: 600; color: #1a1a18; }
+  .h1-val { color: #BA7517 !important; font-weight: 600 !important; }
+  .h2-val { color: #185FA5 !important; font-weight: 600 !important; }
+
+  /* Flow steps */
+  .flow-steps { border: 1px solid #e8e6e0; border-radius: 12px; overflow: hidden; margin: 1.25rem 0; }
+  .flow-step { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-bottom: 1px solid #e8e6e0; }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .flow-step-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .flow-step-sub { font-size: 12px; color: #888780; }
+
+  /* Summary */
+  .summary-box {
+    background: #1a1a18; color: #faf9f7; border-radius: 12px;
+    padding: 24px; margin: 2rem 0; text-align: center;
+  }
+  .summary-box p { color: #c2c0b6; font-size: 15px; margin: 0; line-height: 1.7; }
+  .summary-box strong { color: #fff; }
+
+  .part-link {
+    display: inline-block; font-size: 13px; color: #888780;
+    margin-bottom: 1rem; text-decoration: none;
+    border-bottom: 1px solid #e8e6e0;
+  }
+  .part-link:hover { color: #1a1a18; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Attention, But Make It Multi-Head</h1>
+  <p class="subtitle">One question isn't enough. Alex, Emma, and Daniel ask two at once.</p>
+
+  <hr>
+
+  <h2>1. Why one head isn't enough</h2>
+
+  <p>In Part 1, Alex asked one question: <em>"Where can I get something spicy, fast, and cheap?"</em></p>
+
+  <p>The attention mechanism answered it well. It computed Q, matched it against K, and blended V accordingly. Alex ended up drawing mostly from his own knowledge, Daniel barely registered.</p>
+
+  <p>But consider what Alex actually needs to decide where to eat.</p>
+
+  <p>He has two concerns, not one. He cares about <strong>taste</strong> — spicy, fast, bold flavors. And he cares about <strong>budget</strong> — he's not going to a place Daniel would recommend, because Daniel's idea of dinner costs three times what Alex wants to spend.</p>
+
+  <p>A single attention head can only learn one projection. One W_Q, one W_K, one set of alignment scores. If the head learns to align on taste, it ignores budget. If it aligns on budget, it loses taste.</p>
+
+  <p>This is the problem multi-head attention solves.</p>
+
+  <p>Instead of one head asking one question, <strong>multiple heads ask different questions simultaneously</strong> — each with its own W_Q, W_K, W_V — and their answers get combined at the end.</p>
+
+  <p>In our case: two heads, two questions.</p>
+
+  <div class="head-section">
+    <div class="head-card h1">
+      <div class="head-label">Head 1</div>
+      <div class="head-title">Taste and vibe</div>
+      <div class="head-desc">Whose flavor profile and atmosphere preferences match mine?</div>
+    </div>
+    <div class="head-card h2">
+      <div class="head-label">Head 2</div>
+      <div class="head-title">Budget</div>
+      <div class="head-desc">Whose spending range matches mine?</div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>2. Two heads, two questions</h2>
+
+  <p>Each head is a complete, independent attention computation. The input X is the same — Alex, Emma, and Daniel's preference vectors — but each head projects it differently.</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    X = \begin{bmatrix}
+    & \text{spicy} & \text{cheap} & \text{cozy} & \text{fast} & \text{flavor} & \text{vibe} \\
+    \text{Alex}   & 0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    \text{Emma}   & 0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    \text{Daniel} & 0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix} \qquad X \in \mathbb{R}^{3 \times 6}
+    \]
+  </div>
+
+  <p>Head 1 uses \(W_Q^1, W_K^1, W_V^1\) — learned weights that project X into taste and vibe space. Head 2 uses \(W_Q^2, W_K^2, W_V^2\) — a completely separate set of weights that project X into budget space.</p>
+
+  <p>The two heads never share weights. They train independently, learn independently, and attend independently. The only thing they share is the input.</p>
+
+  <div class="callout">
+    <p>Think of it this way: you're asking two different friends for advice. One knows a lot about food. The other knows a lot about value for money. You give them both the same information about Alex, Emma, and Daniel — but they each filter it through a different lens and come back with a different answer. Multi-head attention does exactly this, in parallel, for every token in the sequence.</p>
+  </div>
+
+  <hr>
+
+  <h2>3. Head 1 — taste and vibe</h2>
+
+  <p>Head 1 is identical to what we computed in Part 1. The weight matrices project X into intent/knows/info space:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    W_Q^1 = \left[\begin{array}{c:c|c}
+     & \text{street-stall} & \text{upscale} \\ \hline
+    \text{spicy}  & 0.97 & 0.08 \\
+    \text{cheap}  & 0.99 & 0.11 \\
+    \text{cozy}   & 0.12 & 0.96 \\
+    \text{fast}   & 0.98 & 0.09 \\
+    \text{flavor} & 0.13 & 0.07 \\
+    \text{vibe}   & 0.10 & 0.98
+    \end{array}\right] \quad
+    W_K^1 = \left[\begin{array}{c:c|c}
+     & \text{knows-street-stall} & \text{knows-upscale-flavor} \\ \hline
+    \text{spicy}  & 0.96 & 0.09 \\
+    \text{cheap}  & 0.98 & 0.11 \\
+    \text{cozy}   & 0.10 & 0.97 \\
+    \text{fast}   & 0.97 & 0.08 \\
+    \text{flavor} & 0.12 & 0.96 \\
+    \text{vibe}   & 0.09 & 0.99
+    \end{array}\right] \quad
+    W_V^1 = \left[\begin{array}{c:c:c|c}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\ \hline
+    \text{spicy}  & 0.97 & 0.11 & 0.09 \\
+    \text{cheap}  & 0.10 & 0.98 & 0.08 \\
+    \text{cozy}   & 0.09 & 0.12 & 0.96 \\
+    \text{fast}   & 0.98 & 0.10 & 0.11 \\
+    \text{flavor} & 0.11 & 0.97 & 0.09 \\
+    \text{vibe}   & 0.08 & 0.09 & 0.99
+    \end{array}\right]
+    \]
+  </div>
+
+  <p>The full derivation is in Part 1. The results:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    A^1 = \begin{bmatrix}
+     & \text{Alex} & \text{Emma} & \text{Daniel} \\
+    \text{Alex}   & 0.929 & 0.046 & 0.024 \\
+    \text{Emma}   & 0.426 & 0.186 & 0.388 \\
+    \text{Daniel} & 0.118 & 0.138 & 0.744
+    \end{bmatrix}
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{Output}^1 = \begin{bmatrix}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
+    \text{Alex}   & 1.909 & 1.270 & 0.533 \\
+    \text{Emma}   & 1.142 & 1.292 & 1.068 \\
+    \text{Daniel} & 0.697 & 1.310 & 1.666
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    Head 1 tells us: Alex's street-stall craving matched his own Sichuan knowledge — 92.9% self-attention. Daniel's upscale craving matched his own upscale knowledge — 74.4% self-attention. Emma sits between both, drawing from each.<br><br>
+    But Head 1 knows nothing about what things cost.
+  </p>
+
+  <hr>
+
+  <h2>4. Head 2 — budget</h2>
+
+  <p>Head 2 asks a different question entirely. The weight matrices project X into budget space — who's asking about affordable places, and who's asking about high-end experiences.</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    W_Q^2 = \left[\begin{array}{c:c|c}
+     & \text{budget}_1\text{(low)} & \text{budget}_2\text{(high)} \\ \hline
+    \text{spicy}  & 0.95 & 0.08 \\
+    \text{cheap}  & 0.98 & 0.06 \\
+    \text{cozy}   & 0.09 & 0.94 \\
+    \text{fast}   & 0.91 & 0.11 \\
+    \text{flavor} & 0.10 & 0.96 \\
+    \text{vibe}   & 0.07 & 0.97
+    \end{array}\right] \quad
+    W_K^2 = \left[\begin{array}{c:c|c}
+     & \text{knows\_low} & \text{knows\_high} \\ \hline
+    \text{spicy}  & 0.94 & 0.09 \\
+    \text{cheap}  & 0.97 & 0.07 \\
+    \text{cozy}   & 0.08 & 0.95 \\
+    \text{fast}   & 0.92 & 0.10 \\
+    \text{flavor} & 0.09 & 0.97 \\
+    \text{vibe}   & 0.08 & 0.96
+    \end{array}\right] \quad
+    W_V^2 = \left[\begin{array}{c:c|c}
+     & \text{price\_info} & \text{experience\_info} \\ \hline
+    \text{spicy}  & 0.96 & 0.09 \\
+    \text{cheap}  & 0.97 & 0.08 \\
+    \text{cozy}   & 0.10 & 0.95 \\
+    \text{fast}   & 0.93 & 0.11 \\
+    \text{flavor} & 0.09 & 0.96 \\
+    \text{vibe}   & 0.08 & 0.97
+    \end{array}\right]
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">W_Q²</strong> — budget₁ captures low-budget intent (spicy, cheap, fast), budget₂ captures high-budget intent (cozy, flavor, vibe)<br>
+    <strong style="color:#555;">W_K²</strong> — knows_low signals knowledge of affordable places, knows_high signals knowledge of premium places<br>
+    <strong style="color:#555;">W_V²</strong> — price_info carries concrete budget knowledge, experience_info carries high-end experience knowledge
+  </p>
+
+  <p><strong>Q² = X @ W_Q²</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    Q^2 = X W_Q^2 =
+    \begin{bmatrix}
+    0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix}
+    \begin{bmatrix}
+    0.95 & 0.08 \\ 0.98 & 0.06 \\ 0.09 & 0.94 \\ 0.91 & 0.11 \\ 0.10 & 0.96 \\ 0.07 & 0.97
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{budget}_1 & \text{budget}_2 \\
+    \text{Alex}   & 2.777 & 0.577 \\
+    \text{Emma}   & 1.239 & 1.261 \\
+    \text{Daniel} & 0.646 & 2.742
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p><strong>K² = X @ W_K²</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    K^2 = X W_K^2 =
+    \begin{bmatrix}
+    0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix}
+    \begin{bmatrix}
+    0.94 & 0.09 \\ 0.97 & 0.07 \\ 0.08 & 0.95 \\ 0.92 & 0.10 \\ 0.09 & 0.97 \\ 0.08 & 0.96
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{knows\_low} & \text{knows\_high} \\
+    \text{Alex}   & 2.765 & 0.589 \\
+    \text{Emma}   & 1.218 & 1.278 \\
+    \text{Daniel} & 0.634 & 2.753
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p><strong>V² = X @ W_V²</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    V^2 = X W_V^2 =
+    \begin{bmatrix}
+    0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix}
+    \begin{bmatrix}
+    0.96 & 0.09 \\ 0.97 & 0.08 \\ 0.10 & 0.95 \\ 0.93 & 0.11 \\ 0.09 & 0.96 \\ 0.08 & 0.97
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{price\_info} & \text{experience\_info} \\
+    \text{Alex}   & 2.797 & 0.607 \\
+    \text{Emma}   & 1.241 & 1.290 \\
+    \text{Daniel} & 0.655 & 2.757
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">Alex</strong> Q²=[2.777, 0.577] — asking firmly in the low-budget direction. V²=[2.797, 0.607] — his knowledge is mainly about affordable places.<br>
+    <strong style="color:#555;">Emma</strong> Q²=[1.239, 1.261] — balanced between both budget ranges.<br>
+    <strong style="color:#555;">Daniel</strong> Q²=[0.646, 2.742] — asking firmly in the high-budget direction. V²=[0.655, 2.757] — his knowledge is mainly about premium experiences.
+  </p>
+
+  <p><strong>S² = Q²Kᵀ² / √2</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    S^2 \approx \begin{bmatrix}
+     & \text{Alex} & \text{Emma} & \text{Daniel} \\
+    \text{Alex}   & 5.671 & 2.912 & 2.368 \\
+    \text{Emma}   & 2.948 & 2.207 & 3.010 \\
+    \text{Daniel} & 2.405 & 3.034 & 5.627
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p><strong>Softmax → A²</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{softmax}([5.671, 2.912, 2.368]) \approx [0.909,\ 0.058,\ 0.033]
+    \]
+    \[
+    \text{softmax}([2.948, 2.207, 3.010]) \approx [0.394,\ 0.188,\ 0.419]
+    \]
+    \[
+    \text{softmax}([2.405, 3.034, 5.627]) \approx [0.036,\ 0.067,\ 0.897]
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    A^2 = \begin{bmatrix}
+     & \text{Alex} & \text{Emma} & \text{Daniel} \\
+    \text{Alex}   & 0.909 & 0.058 & 0.033 \\
+    \text{Emma}   & 0.394 & 0.188 & 0.419 \\
+    \text{Daniel} & 0.036 & 0.067 & 0.897
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Compare A² with A¹:</p>
+
+  <table class="compare-table">
+    <thead>
+      <tr><th>Person</th><th>Self-attention (Head 1)</th><th>Self-attention (Head 2)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Alex</td><td class="h1-val">0.929</td><td class="h2-val">0.909</td></tr>
+      <tr><td>Emma</td><td class="h1-val">0.186</td><td class="h2-val">0.188</td></tr>
+      <tr><td>Daniel</td><td class="h1-val">0.744</td><td class="h2-val">0.897</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">Daniel's self-attention jumps from 0.744 to 0.897 in Head 2 — on budget, he is even more isolated. Nobody else is in his league. Alex stays similarly self-referential. Emma remains the most balanced in both heads.</p>
+
+  <p><strong>Output² = A² @ V²</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{Output}^2 = A^2 \cdot V^2 =
+    \begin{bmatrix}
+    0.909 & 0.058 & 0.033 \\
+    0.394 & 0.188 & 0.419 \\
+    0.036 & 0.067 & 0.897
+    \end{bmatrix}
+    \begin{bmatrix}
+    2.797 & 0.607 \\
+    1.241 & 1.290 \\
+    0.655 & 2.757
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{price\_info} & \text{experience\_info} \\
+    \text{Alex}   & 2.614 & 0.734 \\
+    \text{Emma}   & 1.607 & 1.633 \\
+    \text{Daniel} & 0.772 & 2.572
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">Head 2 captures something Head 1 completely missed: Alex and Daniel are on opposite ends of the budget spectrum, and Emma is exactly in the middle.</p>
+
+  <hr>
+
+  <h2>5. Concatenate and project</h2>
+
+  <p>Each head has produced an output matrix. Now we combine them.</p>
+
+  <p>The combination is not averaging, and not adding — it is <strong>concatenation</strong>. Each person's two output vectors are placed end to end, forming a single longer vector:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{Concat} = [\text{Output}^1 \,\|\, \text{Output}^2] =
+    \begin{bmatrix}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} & \text{price\_info} & \text{exp\_info} \\
+    \text{Alex}   & 1.909 & 1.270 & 0.533 & 2.614 & 0.734 \\
+    \text{Emma}   & 1.142 & 1.292 & 1.068 & 1.607 & 1.633 \\
+    \text{Daniel} & 0.697 & 1.310 & 1.666 & 0.772 & 2.572
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>This 5-dimensional vector now contains everything — taste, vibe, and budget — all in one place. But it's in the wrong shape to feed into the next layer, which expects the original 6-dimensional space. So we project it back down with <strong>W_O ∈ ℝ⁵ˣ⁶</strong>, a learned weight matrix that decides how to blend the two heads' contributions:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    W_O = \begin{bmatrix}
+     & \text{spicy} & \text{cheap} & \text{cozy} & \text{fast} & \text{flavor} & \text{vibe} \\
+    \text{info-sichuan}    & 0.96 & 0.09 & 0.08 & 0.95 & 0.10 & 0.07 \\
+    \text{info-budget}     & 0.10 & 0.94 & 0.11 & 0.09 & 0.96 & 0.08 \\
+    \text{info-upscale}    & 0.08 & 0.10 & 0.95 & 0.07 & 0.11 & 0.97 \\
+    \text{price\_info}     & 0.11 & 0.96 & 0.09 & 0.10 & 0.12 & 0.08 \\
+    \text{exp\_info}       & 0.09 & 0.10 & 0.12 & 0.08 & 0.95 & 0.96
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    Each row maps one concatenated dimension back into the original feature space. info-sichuan flows strongly into spicy and fast. info-upscale flows into cozy and vibe. price_info flows into cheap. experience_info flows into flavor and vibe.
+  </p>
+
+  <p><strong>Final Output = Concat @ W_O</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{Final Output} =
+    \begin{bmatrix}
+     & \text{spicy} & \text{cheap} & \text{cozy} & \text{fast} & \text{flavor} & \text{vibe} \\
+    \text{Alex}   & 2.357 & 4.001 & 1.122 & 2.285 & 2.480 & 1.667 \\
+    \text{Emma}   & 1.634 & 3.130 & 1.589 & 1.568 & 3.215 & 2.916 \\
+    \text{Daniel} & 1.249 & 2.459 & 2.161 & 1.180 & 4.047 & 4.301
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Let's expand Alex's row explicitly to see how W_O combines both heads:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    \text{Alex}_{\text{spicy}}  &= 1.909\times0.96 + 1.270\times0.10 + 0.533\times0.08 + 2.614\times0.11 + 0.734\times0.09 = 2.357 \\
+    \text{Alex}_{\text{cheap}}  &= 1.909\times0.09 + 1.270\times0.94 + 0.533\times0.10 + 2.614\times0.96 + 0.734\times0.10 = 4.001 \\
+    \text{Alex}_{\text{cozy}}   &= 1.909\times0.08 + 1.270\times0.11 + 0.533\times0.95 + 2.614\times0.09 + 0.734\times0.12 = 1.122 \\
+    \text{Alex}_{\text{fast}}   &= 1.909\times0.95 + 1.270\times0.09 + 0.533\times0.07 + 2.614\times0.10 + 0.734\times0.08 = 2.285 \\
+    \text{Alex}_{\text{flavor}} &= 1.909\times0.10 + 1.270\times0.96 + 0.533\times0.11 + 2.614\times0.12 + 0.734\times0.95 = 2.480 \\
+    \text{Alex}_{\text{vibe}}   &= 1.909\times0.07 + 1.270\times0.08 + 0.533\times0.97 + 2.614\times0.08 + 0.734\times0.96 = 1.667
+    \end{aligned}
+    \]
+  </div>
+
+  <p>Notice why cheap = 4.001 is so dominant. Two terms drive it:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \underbrace{1.270 \times 0.94}_{\text{info-budget} \to \text{cheap}} + \underbrace{2.614 \times 0.96}_{\text{price\_info} \to \text{cheap}} = 1.194 + 2.509 = 3.703
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">Head 1's budget signal and Head 2's price signal both flow strongly into cheap via W_O — two heads, two angles, both pointing at the same dimension. W_O is where those contributions stack. This is the payoff of multi-head attention: independent views of the same input, combined into a richer final representation than any single head could produce alone.</p>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">Alex</strong> [2.357, 4.001, 1.122, 2.285, 2.480, 1.667] — cheap dominates. Head 1 said he craves street-stall food; Head 2 said he's low-budget. W_O amplified both signals into a strong cheap output.<br>
+    <strong style="color:#555;">Emma</strong> [1.634, 3.130, 1.589, 1.568, 3.215, 2.916] — flavor and cheap lead. Both heads found her balanced between the two extremes, and the final output reflects that.<br>
+    <strong style="color:#555;">Daniel</strong> [1.249, 2.459, 2.161, 1.180, 4.047, 4.301] — flavor and vibe dominate. Head 1 said he craves atmosphere; Head 2 said he's high-budget. W_O wove both signals into a strong flavor+vibe output.
+  </p>
+
+  <div class="callout">
+    <p>Notice what single-head attention couldn't have produced: Daniel's cheap score (2.459) is notably lower than Alex's (4.001), even though cheap is a feature in X for all three. The budget head added information the taste head never saw, and W_O wove them together.</p>
+  </div>
+
+  <hr>
+
+  <h2>6. The full picture</h2>
+
+  <p>Multi-head attention is not a fundamentally different operation from single-head attention. It is the same operation, run in parallel, multiple times, each time asking a different question — then combining the answers.</p>
+
+  <p>For each head \(h = 1, 2, \ldots, H\):</p>
+
+  <div class="formula">Q_h = X W_Q_h,   K_h = X W_K_h,   V_h = X W_V_h</div>
+  <div class="formula">Output_h = softmax( Q_h K_hᵀ / √d_k ) V_h</div>
+
+  <p>Then concatenate and project:</p>
+
+  <div class="formula">Final Output = Concat[Output_1, Output_2, ..., Output_H] · W_O</div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">In our example, H = 2. In GPT-3, H = 96.</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">H1</div>
+      <div>
+        <div class="flow-step-title">Head 1 — taste and vibe</div>
+        <div class="flow-step-sub">Independent Q¹, K¹, V¹ → Output¹ (3-dim)</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E6F1FB;color:#185FA5;">H2</div>
+      <div>
+        <div class="flow-step-title">Head 2 — budget</div>
+        <div class="flow-step-sub">Independent Q², K², V² → Output² (2-dim)</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">‖</div>
+      <div>
+        <div class="flow-step-title">Concatenate</div>
+        <div class="flow-step-sub">Stack Output¹ and Output² end to end → 5-dim vector</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E1F5EE;color:#0F6E56;">W_O</div>
+      <div>
+        <div class="flow-step-title">Project with W_O</div>
+        <div class="flow-step-sub">Blend both heads' contributions → back to 6-dim</div>
+      </div>
+    </div>
+  </div>
+
+  <p>What each piece does:</p>
+
+  <p><strong>Multiple W_Q, W_K, W_V</strong> — each head learns to ask a different question. No coordination between heads during training; they find their own niches.</p>
+
+  <p><strong>Independent softmax per head</strong> — each head produces its own attention distribution. Head 1 might attend broadly; Head 2 might attend sharply. They don't interfere.</p>
+
+  <p><strong>Concatenation</strong> — preserves everything. No information from either head is discarded before W_O sees it.</p>
+
+  <p><strong>W_O</strong> — the mixer. It learns how to combine the heads' contributions into a coherent final representation. This is where "taste matters more than budget in this context" gets decided.</p>
+
+  <div class="summary-box">
+    <p>Multi-head attention lets the model maintain <strong>parallel, non-interfering views</strong> of the same input. Each head specialises. W_O synthesises. You didn't ask one friend "who shares both my taste and my budget?" — you asked two friends two clean questions, listened to both, and combined them yourself. That combination is W_O.</p>
+  </div>
+
+</div>
+</body>
+</html>
