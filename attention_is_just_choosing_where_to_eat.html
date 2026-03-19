@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention Is Just Choosing Where to Eat</title>
+<script>MathJax = { tex: { inlineMath: [['\\(','\\)']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #faf9f7;
+    color: #1a1a18;
+    line-height: 1.75;
+    font-size: 16px;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 700px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  h2 { font-size: 18px; font-weight: 600; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  p  { margin-bottom: 1rem; color: #444441; }
+  p strong { color: #1a1a18; }
+
+  .subtitle { font-size: 14px; color: #888780; margin-bottom: 2.5rem; line-height: 1.6; }
+  hr { border: none; border-top: 1px solid #e8e6e0; margin: 2rem 0; }
+
+  /* People cards */
+  .people-row { display: flex; gap: 12px; margin: 1.25rem 0; }
+  .person-card {
+    flex: 1; border: 1px solid #e8e6e0; border-radius: 12px;
+    padding: 14px 16px; background: #fff;
+  }
+  .person-name { font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 600; }
+  .tag-spicy  { background: #FAECE7; color: #993C1D; }
+  .tag-cheap  { background: #EAF3DE; color: #3B6D11; }
+  .tag-cozy   { background: #EEEDFE; color: #534AB7; }
+  .tag-fast   { background: #FAEEDA; color: #BA7517; }
+  .tag-flavor { background: #E1F5EE; color: #0F6E56; }
+  .tag-vibe   { background: #E6F1FB; color: #185FA5; }
+
+  /* Vector table */
+  .vec-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 1rem 0; }
+  .vec-table th {
+    text-align: left; font-weight: 600; font-size: 12px; color: #888780;
+    padding: 4px 10px 8px 0; border-bottom: 1px solid #e8e6e0;
+  }
+  .vec-table td { padding: 8px 10px 8px 0; border-bottom: 1px solid #e8e6e0; vertical-align: middle; color: #888780; }
+  .vec-table td:first-child { font-weight: 600; color: #1a1a18; }
+  .cell-1 { color: #1a1a18 !important; font-weight: 600 !important; }
+
+  /* Role cards */
+  .role-section { display: flex; gap: 12px; margin: 1.25rem 0; }
+  .role-card { flex: 1; border-radius: 12px; padding: 16px; border: 1px solid transparent; }
+  .role-card.q { background: #FAEEDA; border-color: #FAC775; }
+  .role-card.k { background: #EEEDFE; border-color: #CECBF6; }
+  .role-card.v { background: #E1F5EE; border-color: #9FE1CB; }
+  .role-label { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .role-card.q .role-label { color: #BA7517; }
+  .role-card.k .role-label { color: #534AB7; }
+  .role-card.v .role-label { color: #0F6E56; }
+  .role-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .role-card.q .role-title { color: #BA7517; }
+  .role-card.k .role-title { color: #534AB7; }
+  .role-card.v .role-title { color: #0F6E56; }
+  .role-desc { font-size: 12px; color: #555; line-height: 1.55; }
+
+  /* Callout */
+  .callout {
+    border-left: 3px solid #d3d1c7; padding: 12px 16px;
+    margin: 1.25rem 0; border-radius: 0 8px 8px 0;
+    background: #f4f3ee;
+  }
+  .callout p { margin: 0; font-size: 14px; color: #555; }
+
+  /* Interactive demo */
+  .demo-box {
+    border: 1px solid #e8e6e0; border-radius: 12px; padding: 20px;
+    margin: 1.25rem 0; background: #fff;
+  }
+  .demo-title {
+    font-size: 11px; font-weight: 700; color: #888780;
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px;
+  }
+  .token-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .token {
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid #e8e6e0; background: #f4f3ee;
+    color: #888780; transition: all 0.15s; user-select: none;
+  }
+  .token:hover { border-color: #b4b2a9; color: #1a1a18; }
+  .token.active { background: #FAEEDA; color: #BA7517; border-color: #FAC775; }
+
+  .attn-bars { display: flex; flex-direction: column; gap: 10px; }
+  .attn-row { display: flex; align-items: center; gap: 10px; }
+  .attn-name { font-size: 13px; font-weight: 600; color: #1a1a18; width: 80px; flex-shrink: 0; }
+  .attn-bar-track { flex: 1; height: 8px; background: #f4f3ee; border-radius: 4px; overflow: hidden; }
+  .attn-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+  .attn-val { font-size: 12px; color: #888780; width: 38px; text-align: right; flex-shrink: 0; }
+  .label-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .label-pill { font-size: 12px; padding: 4px 12px; border-radius: 20px; background: #f4f3ee; color: #555; }
+
+  /* Softmax demo */
+  .toggle-row { display: flex; align-items: center; gap: 12px; margin: 1rem 0; font-size: 13px; color: #555; flex-wrap: wrap; }
+  .pill-toggle { display: flex; border: 1px solid #d3d1c7; border-radius: 20px; overflow: hidden; }
+  .pill-opt { padding: 5px 14px; font-size: 12px; cursor: pointer; transition: all 0.15s; color: #555; user-select: none; }
+  .pill-opt.active { background: #1a1a18; color: #fff; }
+
+  .softmax-demo { display: flex; gap: 10px; align-items: flex-end; margin: 1.25rem 0; height: 110px; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; }
+  .bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+  .bar { width: 100%; border-radius: 5px 5px 0 0; transition: height 0.4s cubic-bezier(.4,0,.2,1); min-height: 4px; }
+  .bar-label { font-size: 13px; color: #444; font-weight: 600; }
+  .bar-val { font-size: 11px; color: #888780; }
+
+  /* Formula */
+  .formula {
+    background: #f4f3ee; border-radius: 8px; padding: 12px 18px;
+    font-family: "SF Mono", "Fira Code", monospace; font-size: 14px;
+    color: #1a1a18; margin: 1rem 0;
+  }
+
+  /* Flow steps */
+  .flow-steps { border: 1px solid #e8e6e0; border-radius: 12px; overflow: hidden; margin: 1.25rem 0; }
+  .flow-step {
+    display: flex; align-items: center; gap: 14px; padding: 13px 16px;
+    border-bottom: 1px solid #e8e6e0;
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-icon {
+    width: 34px; height: 34px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; font-size: 14px;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .flow-step-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .flow-step-sub { font-size: 12px; color: #888780; }
+
+  /* Summary */
+  .summary-box {
+    background: #1a1a18; color: #faf9f7; border-radius: 12px;
+    padding: 24px; margin: 2rem 0; text-align: center;
+  }
+  .summary-box p { color: #c2c0b6; font-size: 15px; margin: 0; line-height: 1.7; }
+  .summary-box strong { color: #fff; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Attention Is Just Deciding Where To Eat</h1>
+  <p class="subtitle">Alex, Emma, and Daniel are trying to pick a restaurant — and in doing so, they reveal the entire logic of attention.</p>
+
+  <hr>
+
+  <h2>1. Three people, three preferences</h2>
+
+  <p>Alex likes spicy food, cares about price, and wants fast service. Emma prioritizes comfort and a low bill. Daniel is after atmosphere and genuine flavor.</p>
+
+  <div class="people-row">
+    <div class="person-card">
+      <div class="person-name">Alex</div>
+      <div class="tag-row">
+        <span class="tag tag-spicy">spicy</span>
+        <span class="tag tag-cheap">cheap</span>
+        <span class="tag tag-fast">fast</span>
+      </div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Emma</div>
+      <div class="tag-row">
+        <span class="tag tag-cheap">cheap</span>
+        <span class="tag tag-cozy">cozy</span>
+      </div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Daniel</div>
+      <div class="tag-row">
+        <span class="tag tag-flavor">flavor</span>
+        <span class="tag tag-vibe">vibe</span>
+        <span class="tag tag-cozy">cozy</span>
+      </div>
+    </div>
+  </div>
+
+  <p>We can encode each person as a vector across six dimensions — <strong>[spicy, cheap, cozy, fast, flavor, vibe]</strong>. This is <strong>embedding</strong> — turning real-world concepts into numbers. Written as a matrix:</p>
+
+  <div style="overflow-x:auto; margin: 1.5rem 0;">
+    \[
+    X = \begin{bmatrix}
+    & \text{spicy} & \text{cheap} & \text{cozy} & \text{fast} & \text{flavor} & \text{vibe} \\
+    \text{Alex}   & 0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    \text{Emma}   & 0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    \text{Daniel} & 0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix}
+    \qquad X \in \mathbb{R}^{3 \times 6}
+    \]
+  </div>
+
+  <p style="color:#888780; font-size:14px;">Each row is one person. Each column is one feature. Everything that follows — Q, K, V — starts here.</p>
+
+  <hr>
+
+  <h2>2. One person, three roles</h2>
+
+  <p>Here is where most explanations skip something important. In attention, there are three matrices — Q, K, and V — but they don't represent three different groups of people. <strong>Every person plays all three roles simultaneously.</strong> The same input vector gets projected into three separate spaces, each with a different job:</p>
+
+  <div class="role-section">
+    <div class="role-card q">
+      <div class="role-label">Q</div>
+      <div class="role-title">What do I want right now?</div>
+      <div class="role-desc">Query — the current intent.<br>Alex as the asker: "Am I in the mood for spicy, or do I care more about price today?"</div>
+    </div>
+    <div class="role-card k">
+      <div class="role-label">K</div>
+      <div class="role-title">Which places do I know about?</div>
+      <div class="role-desc">Key — a signal of what I know.<br>Alex as a pointer: "I know a great spicy spot, and a fast cheap one."</div>
+    </div>
+    <div class="role-card v">
+      <div class="role-label">V</div>
+      <div class="role-title">What exactly do I know?</div>
+      <div class="role-desc">Value — the actual knowledge.<br>Alex as an information source: the address, the dish to order, how long the wait is.</div>
+    </div>
+  </div>
+
+  <p>Why three separate projections? Because "how you want to be found" and "what you actually contain" are different things, and the model needs the freedom to learn them independently. If you used the raw vector for everything, Q and K would be identical — and the model would lose the ability to distinguish between a token's <em>searchable surface</em> and its <em>actual meaning</em>.</p>
+
+  <div class="callout">
+    <p><strong>K vs V in plain terms:</strong> K is the signal that says "I know about good spicy food" — it's what gets compared against Q to decide whose opinion is worth listening to. V is the actual knowledge: the restaurant name, the address, what to order. You use K to decide who to ask; you use V to get the answer.</p>
+  </div>
+
+  <p>Each role is produced by multiplying X by a learned weight matrix. These matrices are what the model trains — they encode how to project raw preferences into each space:</p>
+
+  <p style="margin-bottom:0.5rem;"><strong>W<sub>Q</sub></strong> ∈ ℝ<sup>6×2</sup> — projects "who I am" into "what I'm asking for"</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    W_Q = \left[\begin{array}{c:c|c}
+     & \text{intent}_1 & \text{intent}_2 \\
+    \hline
+    \text{spicy}  & 1 & 0 \\
+    \text{cheap}  & 1 & 0 \\
+    \text{cozy}   & 0 & 1 \\
+    \text{fast}   & 1 & 0 \\
+    \text{flavor} & 0 & 0 \\
+    \text{vibe}   & 0 & 1
+    \end{array}\right]
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">Each row is an input feature. Each column is a query direction. spicy contributes to intent₁ ("I'm asking about bold food"), cozy contributes to intent₂ ("I'm asking about atmosphere").<br><br>
+  <strong style="color:#555;">intent₁</strong> — favors spicy, cheap, fast<br>
+  <strong style="color:#555;">intent₂</strong> — favors cozy, vibe</p>
+
+  <p style="margin-bottom:0.5rem;"><strong>W<sub>K</sub></strong> ∈ ℝ<sup>6×2</sup> — projects "who I am" into "what kinds of places I know about"</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    W_K = \left[\begin{array}{c:c|c}
+     & \text{knows}_1 & \text{knows}_2 \\
+    \hline
+    \text{spicy}  & 1 & 0 \\
+    \text{cheap}  & 1 & 0 \\
+    \text{cozy}   & 0 & 1 \\
+    \text{fast}   & 1 & 0 \\
+    \text{flavor} & 0 & 1 \\
+    \text{vibe}   & 0 & 1
+    \end{array}\right]
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">W<sub>K</sub> and W<sub>Q</sub> are deliberately different. "Asking about bold food" and "knowing about bold food" are two different things — the model needs separate weights to learn them independently.<br><br>
+  <strong style="color:#555;">knows₁</strong> — knows about spicy, cheap, fast places<br>
+  <strong style="color:#555;">knows₂</strong> — knows about cozy, flavor, vibe places</p>
+
+  <p style="margin-bottom:0.5rem;"><strong>W<sub>V</sub></strong> ∈ ℝ<sup>6×3</sup> — projects "who I am" into "what I actually know"</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    W_V = \left[\begin{array}{c:c:c|c}
+     & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
+    \hline
+    \text{spicy}  & 1 & 0 & 0 \\
+    \text{cheap}  & 0 & 1 & 0 \\
+    \text{cozy}   & 0 & 0 & 1 \\
+    \text{fast}   & 1 & 0 & 0 \\
+    \text{flavor} & 0 & 1 & 0 \\
+    \text{vibe}   & 0 & 0 & 1
+    \end{array}\right]
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">V has three output dimensions — it carries content, not a matching signal.<br><br>
+  <strong style="color:#555;">info₁</strong> — spicy, fast related info<br>
+  <strong style="color:#555;">info₂</strong> — cheap, flavor related info<br>
+  <strong style="color:#555;">info₃</strong> — cozy, vibe related info</p>
+
+  <hr>
+
+  <h2>3. Alignment scores — who matches whom?</h2>
+
+  <p>Now we can compute Q and K by multiplying X through the weight matrices.</p>
+
+  <p style="margin-bottom:0.5rem;"><strong>Q = X W<sub>Q</sub></strong> — what each person is asking for</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    Q = X W_Q =
+    \begin{bmatrix}
+    0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix}
+    \begin{bmatrix}
+    1 & 0 \\ 1 & 0 \\ 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 1
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{intent}_1 & \text{intent}_2 \\
+    \text{Alex}   & 2.90 & 0.20 \\
+    \text{Emma}   & 1.16 & 1.12 \\
+    \text{Daniel} & 0.42 & 1.87
+    \end{bmatrix}
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
+    <strong style="color:#555;">Alex</strong> [2.90, 0.20] — his question is almost entirely in the intent₁ direction. He is asking "where can I get something spicy, fast, and cheap?"<br>
+    <strong style="color:#555;">Emma</strong> [1.16, 1.12] — balanced between both directions. She cares about both taste and atmosphere.<br>
+    <strong style="color:#555;">Daniel</strong> [0.42, 1.87] — strongly in the intent₂ direction. He is asking "where has a good vibe and is cozy?"
+  </p>
+
+  <p style="margin-bottom:0.5rem;"><strong>K = X W<sub>K</sub></strong> — what each person knows about</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    K = X W_K =
+    \begin{bmatrix}
+    0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix}
+    \begin{bmatrix}
+    1 & 0 \\ 1 & 0 \\ 0 & 1 \\ 1 & 0 \\ 0 & 1 \\ 0 & 1
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{knows}_1 & \text{knows}_2 \\
+    \text{Alex}   & 2.90 & 0.35 \\
+    \text{Emma}   & 1.16 & 1.25 \\
+    \text{Daniel} & 0.42 & 2.83
+    \end{bmatrix}
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
+    <strong style="color:#555;">Alex</strong> [2.90, 0.35] — knows mainly spicy, cheap, fast places. Very little about cozy or vibe.<br>
+    <strong style="color:#555;">Emma</strong> [1.16, 1.25] — knows a bit of both. Balanced knowledge.<br>
+    <strong style="color:#555;">Daniel</strong> [0.42, 2.83] — knows mainly cozy, flavor, vibe places. Little about efficiency or heat.<br><br>
+    Note: Alex's Q and K are both close to [2.90, ~0.2–0.35] — a near-coincidence of these numbers. In a real model, W<sub>Q</sub> and W<sub>K</sub> are trained separately and almost never produce the same result. That is precisely why two matrices are needed.
+  </p>
+
+  <p style="margin-bottom:0.5rem;"><strong>V = X W<sub>V</sub></strong> — what each person actually knows</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    V = X W_V =
+    \begin{bmatrix}
+    0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
+    \end{bmatrix}
+    \begin{bmatrix}
+    1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \\ 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
+    \text{Alex}   & 1.95 & 1.10 & 0.20 \\
+    \text{Emma}   & 0.20 & 1.09 & 1.12 \\
+    \text{Daniel} & 0.25 & 1.13 & 1.87
+    \end{bmatrix}
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
+    <strong style="color:#555;">Alex</strong> [1.95, 1.10, 0.20] — mainly holds spicy/fast info, some cheap/flavor, very little about cozy/vibe.<br>
+    <strong style="color:#555;">Emma</strong> [0.20, 1.09, 1.12] — holds cheap/flavor and cozy/vibe info equally, little about spicy/fast.<br>
+    <strong style="color:#555;">Daniel</strong> [0.25, 1.13, 1.87] — mainly holds cozy/vibe info, some cheap/flavor, little about spicy/fast.
+  </p>
+
+  <p>We compute a score for every (query, key) pair using the <strong>dot product</strong>. The dot product measures how much one vector points in the direction of another — two vectors that are perfectly aligned score high; two that are orthogonal score zero.</p>
+
+  <p>So the score S[i][j] = Q[i] · K[j] answers: <em>does person i's current intent align with person j's knowledge?</em></p>
+
+  <p>Expanding each pair explicitly:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    Q_{\text{Alex}}   \cdot K_{\text{Alex}}   &= [2.90, 0.20] \cdot [2.90, 0.35] = 2.90\times2.90 + 0.20\times0.35 = 8.48 \\
+    Q_{\text{Alex}}   \cdot K_{\text{Emma}}   &= [2.90, 0.20] \cdot [1.16, 1.25] = 2.90\times1.16 + 0.20\times1.25 = 3.61 \\
+    Q_{\text{Alex}}   \cdot K_{\text{Daniel}} &= [2.90, 0.20] \cdot [0.42, 2.83] = 2.90\times0.42 + 0.20\times2.83 = 1.79 \\[6pt]
+    Q_{\text{Emma}}   \cdot K_{\text{Alex}}   &= [1.16, 1.12] \cdot [2.90, 0.35] = 1.16\times2.90 + 1.12\times0.35 = 3.75 \\
+    Q_{\text{Emma}}   \cdot K_{\text{Emma}}   &= [1.16, 1.12] \cdot [1.16, 1.25] = 1.16\times1.16 + 1.12\times1.25 = 2.75 \\
+    Q_{\text{Emma}}   \cdot K_{\text{Daniel}} &= [1.16, 1.12] \cdot [0.42, 2.83] = 1.16\times0.42 + 1.12\times2.83 = 3.66 \\[6pt]
+    Q_{\text{Daniel}} \cdot K_{\text{Alex}}   &= [0.42, 1.87] \cdot [2.90, 0.35] = 0.42\times2.90 + 1.87\times0.35 = 1.87 \\
+    Q_{\text{Daniel}} \cdot K_{\text{Emma}}   &= [0.42, 1.87] \cdot [1.16, 1.25] = 0.42\times1.16 + 1.87\times1.25 = 2.83 \\
+    Q_{\text{Daniel}} \cdot K_{\text{Daniel}} &= [0.42, 1.87] \cdot [0.42, 2.83] = 0.42\times0.42 + 1.87\times2.83 = 5.47
+    \end{aligned}
+    \]
+  </div>
+
+  <p>These 9 dot products can be computed in one step using matrix multiplication. Q is 3×2 and K is also 3×2 — they can't be multiplied directly. Transposing K to 2×3 makes the shapes compatible, and Q @ Kᵀ batches all 9 dot products at once:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    QK^\top =
+    \begin{bmatrix} 2.90 & 0.20 \\ 1.16 & 1.12 \\ 0.42 & 1.87 \end{bmatrix}
+    \begin{bmatrix} 2.90 & 1.16 & 0.42 \\ 0.35 & 1.25 & 2.83 \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{Alex} & \text{Emma} & \text{Daniel} \\
+    \text{Alex}   & 8.48 & 3.61 & 1.79 \\
+    \text{Emma}   & 3.75 & 2.75 & 3.66 \\
+    \text{Daniel} & 1.87 & 2.83 & 5.47
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Before softmax, we divide by \(\sqrt{d_k}\) where \(d_k = 2\) is the dimension of Q and K. This prevents the dot products from growing too large and making softmax overly sharp:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    S = \frac{QK^\top}{\sqrt{d_k}} = \frac{QK^\top}{\sqrt{2}} \approx
+    \begin{bmatrix}
+     & \text{Alex} & \text{Emma} & \text{Daniel} \\
+    \text{Alex}   & 5.99 & 2.55 & 1.27 \\
+    \text{Emma}   & 2.65 & 1.95 & 2.59 \\
+    \text{Daniel} & 1.32 & 2.00 & 3.87
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">Alex → Alex = 8.48 → 5.99</strong> — his intent (intent₁=2.90) strongly matches his own knowledge (knows₁=2.90).<br>
+    <strong style="color:#555;">Alex → Daniel = 1.79 → 1.27</strong> — some overlap, but Alex's intent₁ doesn't align well with Daniel's knows₂-dominant profile.<br>
+    <strong style="color:#555;">Daniel → Daniel = 5.47 → 3.87</strong> — Daniel's intent (intent₂=1.87) strongly aligns with his own knowledge (knows₂=2.83).
+  </p>
+
+  <hr>
+
+  <h2>4. From scores to weights — what softmax actually does</h2>
+
+  <p>We now apply softmax to each row of S. Each row represents one person's scores across all others — softmax turns these into attention weights: how much should I draw from each person's knowledge?</p>
+
+  <p><strong>Alex's row: [5.99, 2.55, 1.27]</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{softmax}([5.99, 2.55, 1.27]) = \frac{[e^{5.99},\ e^{2.55},\ e^{1.27}]}{e^{5.99} + e^{2.55} + e^{1.27}} = \frac{[399,\ 12.81,\ 3.56]}{415.37} \approx [0.961,\ 0.031,\ 0.009]
+    \]
+  </div>
+
+  <p><strong>Emma's row: [2.65, 1.95, 2.59]</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{softmax}([2.65, 1.95, 2.59]) = \frac{[e^{2.65},\ e^{1.95},\ e^{2.59}]}{e^{2.65} + e^{1.95} + e^{2.59}} = \frac{[14.15,\ 7.03,\ 13.33]}{34.51} \approx [0.410,\ 0.204,\ 0.386]
+    \]
+  </div>
+
+  <p><strong>Daniel's row: [1.32, 2.00, 3.87]</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{softmax}([1.32, 2.00, 3.87]) = \frac{[e^{1.32},\ e^{2.00},\ e^{3.87}]}{e^{1.32} + e^{2.00} + e^{3.87}} = \frac{[3.74,\ 7.39,\ 47.94]}{59.07} \approx [0.063,\ 0.125,\ 0.812]
+    \]
+  </div>
+
+  <p>Collecting all three rows into a matrix:</p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    A = \text{softmax}(S) = \begin{bmatrix}
+     & \text{Alex} & \text{Emma} & \text{Daniel} \\
+    \text{Alex}   & 0.961 & 0.031 & 0.009 \\
+    \text{Emma}   & 0.410 & 0.204 & 0.386 \\
+    \text{Daniel} & 0.063 & 0.125 & 0.812
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">Alex</strong> — scores [5.99, 2.55, 1.27] have a large gap, so he draws mostly from himself (0.961).<br>
+    <strong style="color:#555;">Emma</strong> — scores [2.65, 1.95, 2.59] are close, so she draws roughly equally from Alex (0.410) and Daniel (0.386).<br>
+    <strong style="color:#555;">Daniel</strong> — scores [1.32, 2.00, 3.87] heavily favor himself (0.812).
+  </p>
+
+  <hr>
+
+  <h2>5. The output — combining V by weight</h2>
+
+  <p>The softmax weights tell us how much to trust each person. We apply those weights to each person's <strong>V</strong> — their actual content — and sum the result:</p>
+
+  <div class="formula">Output = softmax( Q @ Kᵀ / √d ) @ V</div>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{Output} = A \cdot V =
+    \begin{bmatrix}
+    0.961 & 0.031 & 0.009 \\
+    0.410 & 0.204 & 0.386 \\
+    0.063 & 0.125 & 0.812
+    \end{bmatrix}
+    \begin{bmatrix}
+    1.95 & 1.10 & 0.20 \\
+    0.20 & 1.09 & 1.12 \\
+    0.25 & 1.13 & 1.87
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+     & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
+    \text{Alex}   & 1.880 & 1.091 & 0.243 \\
+    \text{Emma}   & 0.937 & 0.884 & 1.005 \\
+    \text{Daniel} & 0.453 & 1.185 & 1.671
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Expanding each row explicitly:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    \text{Alex}_{\text{info}_1} &= 0.961\times1.95 + 0.031\times0.20 + 0.009\times0.25 = 1.880 \\
+    \text{Alex}_{\text{info}_2} &= 0.961\times1.10 + 0.031\times1.09 + 0.009\times1.13 = 1.091 \\
+    \text{Alex}_{\text{info}_3} &= 0.961\times0.20 + 0.031\times1.12 + 0.009\times1.87 = 0.243 \\[6pt]
+    \text{Emma}_{\text{info}_1} &= 0.410\times1.95 + 0.204\times0.20 + 0.386\times0.25 = 0.937 \\
+    \text{Emma}_{\text{info}_2} &= 0.410\times1.10 + 0.204\times1.09 + 0.386\times1.13 = 0.884 \\
+    \text{Emma}_{\text{info}_3} &= 0.410\times0.20 + 0.204\times1.12 + 0.386\times1.87 = 1.005 \\[6pt]
+    \text{Daniel}_{\text{info}_1} &= 0.063\times1.95 + 0.125\times0.20 + 0.812\times0.25 = 0.453 \\
+    \text{Daniel}_{\text{info}_2} &= 0.063\times1.10 + 0.125\times1.09 + 0.812\times1.13 = 1.185 \\
+    \text{Daniel}_{\text{info}_3} &= 0.063\times0.20 + 0.125\times1.12 + 0.812\times1.87 = 1.671
+    \end{aligned}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">Alex</strong> [1.880, 1.091, 0.243] — output dominated by info₁ (spicy/fast). He paid 96.1% attention to himself, and his own V is strongest in info₁.<br>
+    <strong style="color:#555;">Emma</strong> [0.937, 0.884, 1.005] — output spread across all three dimensions. She split attention between Alex and Daniel, whose V vectors complement each other.<br>
+    <strong style="color:#555;">Daniel</strong> [0.453, 1.185, 1.671] — output dominated by info₃ (cozy/vibe). He paid 81.2% attention to himself, and his own V is strongest in info₃.
+  </p>
+
+  <div class="callout">
+    <p>The output is a <strong>weighted blend of everyone's real information</strong>. Nobody is ignored entirely — even the lowest-weight person still contributes a little. This is why it's called soft attention, not hard selection.</p>
+  </div>
+
+  <hr>
+
+  <h2>The full picture</h2>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">Q</div>
+      <div>
+        <div class="flow-step-title">Project each token into its current intent</div>
+        <div class="flow-step-sub">Q = X @ W_Q — what am I looking for right now?</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EEEDFE;color:#534AB7;">K</div>
+      <div>
+        <div class="flow-step-title">Project each token into what it knows about</div>
+        <div class="flow-step-sub">K = X @ W_K — which places do I know?</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E1F5EE;color:#0F6E56;">V</div>
+      <div>
+        <div class="flow-step-title">Project each token into its actual content</div>
+        <div class="flow-step-sub">V = X @ W_V — what do I actually know?</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">·</div>
+      <div>
+        <div class="flow-step-title">Q @ Kᵀ / √d → alignment scores</div>
+        <div class="flow-step-sub">How well does each person's knowledge match the query?</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">σ</div>
+      <div>
+        <div class="flow-step-title">softmax → attention weights</div>
+        <div class="flow-step-sub">Amplify the gaps, turn scores into a probability distribution</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E6F1FB;color:#185FA5;">∑</div>
+      <div>
+        <div class="flow-step-title">Weights @ V → output</div>
+        <div class="flow-step-sub">Blend everyone's real content in proportion to how well they matched</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-box">
+    <p>Attention is <strong>using alignment between intent and label</strong> to decide <strong>how to blend everyone's actual content</strong>. The restaurant analogy holds — you just have to remember that every person is simultaneously the one asking, the one being evaluated, and the one whose knowledge gets mixed into the final answer.</p>
+  </div>
+
+</div>
+
+<script>
+</script>
+</body>
+</html>
