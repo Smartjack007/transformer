@@ -239,12 +239,12 @@
     W_Q = \left[\begin{array}{c:c|c}
      & \text{intent}_1 & \text{intent}_2 \\
     \hline
-    \text{spicy}  & 1 & 0 \\
-    \text{cheap}  & 1 & 0 \\
-    \text{cozy}   & 0 & 1 \\
-    \text{fast}   & 1 & 0 \\
-    \text{flavor} & 0 & 0 \\
-    \text{vibe}   & 0 & 1
+    \text{spicy}  & 0.97 & 0.08 \\
+    \text{cheap}  & 0.99 & 0.11 \\
+    \text{cozy}   & 0.12 & 0.96 \\
+    \text{fast}   & 0.98 & 0.09 \\
+    \text{flavor} & 0.13 & 0.07 \\
+    \text{vibe}   & 0.10 & 0.98
     \end{array}\right]
     \]
   </div>
@@ -258,12 +258,12 @@
     W_K = \left[\begin{array}{c:c|c}
      & \text{knows}_1 & \text{knows}_2 \\
     \hline
-    \text{spicy}  & 1 & 0 \\
-    \text{cheap}  & 1 & 0 \\
-    \text{cozy}   & 0 & 1 \\
-    \text{fast}   & 1 & 0 \\
-    \text{flavor} & 0 & 1 \\
-    \text{vibe}   & 0 & 1
+    \text{spicy}  & 0.96 & 0.09 \\
+    \text{cheap}  & 0.98 & 0.11 \\
+    \text{cozy}   & 0.10 & 0.97 \\
+    \text{fast}   & 0.97 & 0.08 \\
+    \text{flavor} & 0.12 & 0.96 \\
+    \text{vibe}   & 0.09 & 0.99
     \end{array}\right]
     \]
   </div>
@@ -277,12 +277,12 @@
     W_V = \left[\begin{array}{c:c:c|c}
      & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
     \hline
-    \text{spicy}  & 1 & 0 & 0 \\
-    \text{cheap}  & 0 & 1 & 0 \\
-    \text{cozy}   & 0 & 0 & 1 \\
-    \text{fast}   & 1 & 0 & 0 \\
-    \text{flavor} & 0 & 1 & 0 \\
-    \text{vibe}   & 0 & 0 & 1
+    \text{spicy}  & 0.97 & 0.11 & 0.09 \\
+    \text{cheap}  & 0.10 & 0.98 & 0.08 \\
+    \text{cozy}   & 0.09 & 0.12 & 0.96 \\
+    \text{fast}   & 0.98 & 0.10 & 0.11 \\
+    \text{flavor} & 0.11 & 0.97 & 0.09 \\
+    \text{vibe}   & 0.08 & 0.09 & 0.99
     \end{array}\right]
     \]
   </div>
@@ -307,21 +307,21 @@
     0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
     \end{bmatrix}
     \begin{bmatrix}
-    1 & 0 \\ 1 & 0 \\ 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 1
+    0.97 & 0.08 \\ 0.99 & 0.11 \\ 0.12 & 0.96 \\ 0.98 & 0.09 \\ 0.13 & 0.07 \\ 0.10 & 0.98
     \end{bmatrix}
     =
     \begin{bmatrix}
      & \text{intent}_1 & \text{intent}_2 \\
-    \text{Alex}   & 2.90 & 0.20 \\
-    \text{Emma}   & 1.16 & 1.12 \\
-    \text{Daniel} & 0.42 & 1.87
+    \text{Alex}   & 2.885 & 0.474 \\
+    \text{Emma}   & 1.293 & 1.210 \\
+    \text{Daniel} & 0.742 & 1.921
     \end{bmatrix}
     \]
   </div>
   <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
-    <strong style="color:#555;">Alex</strong> [2.90, 0.20] — his question is almost entirely in the intent₁ direction. He is asking "where can I get something spicy, fast, and cheap?"<br>
-    <strong style="color:#555;">Emma</strong> [1.16, 1.12] — balanced between both directions. She cares about both taste and atmosphere.<br>
-    <strong style="color:#555;">Daniel</strong> [0.42, 1.87] — strongly in the intent₂ direction. He is asking "where has a good vibe and is cozy?"
+    <strong style="color:#555;">Alex</strong> [2.885, 0.474] — his question is strongly in the intent₁ direction. He is asking "where can I get something spicy, fast, and cheap?"<br>
+    <strong style="color:#555;">Emma</strong> [1.293, 1.210] — balanced between both directions. She cares about both taste and atmosphere.<br>
+    <strong style="color:#555;">Daniel</strong> [0.742, 1.921] — strongly in the intent₂ direction. He is asking "where has a good vibe and is cozy?"
   </p>
 
   <p style="margin-bottom:0.5rem;"><strong>K = X W<sub>K</sub></strong> — what each person knows about</p>
@@ -334,22 +334,22 @@
     0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
     \end{bmatrix}
     \begin{bmatrix}
-    1 & 0 \\ 1 & 0 \\ 0 & 1 \\ 1 & 0 \\ 0 & 1 \\ 0 & 1
+    0.96 & 0.09 \\ 0.98 & 0.11 \\ 0.10 & 0.97 \\ 0.97 & 0.08 \\ 0.12 & 0.96 \\ 0.09 & 0.99
     \end{bmatrix}
     =
     \begin{bmatrix}
      & \text{knows}_1 & \text{knows}_2 \\
-    \text{Alex}   & 2.90 & 0.35 \\
-    \text{Emma}   & 1.16 & 1.25 \\
-    \text{Daniel} & 0.42 & 2.83
+    \text{Alex}   & 2.850 & 0.610 \\
+    \text{Emma}   & 1.260 & 1.338 \\
+    \text{Daniel} & 0.701 & 2.796
     \end{bmatrix}
     \]
   </div>
   <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
-    <strong style="color:#555;">Alex</strong> [2.90, 0.35] — knows mainly spicy, cheap, fast places. Very little about cozy or vibe.<br>
-    <strong style="color:#555;">Emma</strong> [1.16, 1.25] — knows a bit of both. Balanced knowledge.<br>
-    <strong style="color:#555;">Daniel</strong> [0.42, 2.83] — knows mainly cozy, flavor, vibe places. Little about efficiency or heat.<br><br>
-    Note: Alex's Q and K are both close to [2.90, ~0.2–0.35] — a near-coincidence of these numbers. In a real model, W<sub>Q</sub> and W<sub>K</sub> are trained separately and almost never produce the same result. That is precisely why two matrices are needed.
+    <strong style="color:#555;">Alex</strong> [2.850, 0.610] — knows mainly spicy, cheap, fast places. Very little about cozy or vibe.<br>
+    <strong style="color:#555;">Emma</strong> [1.260, 1.338] — knows a bit of both. Balanced knowledge.<br>
+    <strong style="color:#555;">Daniel</strong> [0.701, 2.796] — knows mainly cozy, flavor, vibe places. Little about efficiency or heat.<br><br>
+    Note: Alex's Q and K are both strong in the first dimension — a near-coincidence of these numbers. In a real model, W<sub>Q</sub> and W<sub>K</sub> are trained separately and almost never produce the same result. That is precisely why two matrices are needed.
   </p>
 
   <p style="margin-bottom:0.5rem;"><strong>V = X W<sub>V</sub></strong> — what each person actually knows</p>
@@ -362,21 +362,21 @@
     0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95
     \end{bmatrix}
     \begin{bmatrix}
-    1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \\ 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1
+    0.97 & 0.11 & 0.09 \\ 0.10 & 0.98 & 0.08 \\ 0.09 & 0.12 & 0.96 \\ 0.98 & 0.10 & 0.11 \\ 0.11 & 0.97 & 0.09 \\ 0.08 & 0.09 & 0.99
     \end{bmatrix}
     =
     \begin{bmatrix}
      & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
-    \text{Alex}   & 1.95 & 1.10 & 0.20 \\
-    \text{Emma}   & 0.20 & 1.09 & 1.12 \\
-    \text{Daniel} & 0.25 & 1.13 & 1.87
+    \text{Alex}   & 2.031 & 1.303 & 0.479 \\
+    \text{Emma}   & 0.404 & 1.217 & 1.189 \\
+    \text{Daniel} & 0.526 & 1.320 & 1.949
     \end{bmatrix}
     \]
   </div>
   <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
-    <strong style="color:#555;">Alex</strong> [1.95, 1.10, 0.20] — mainly holds spicy/fast info, some cheap/flavor, very little about cozy/vibe.<br>
-    <strong style="color:#555;">Emma</strong> [0.20, 1.09, 1.12] — holds cheap/flavor and cozy/vibe info equally, little about spicy/fast.<br>
-    <strong style="color:#555;">Daniel</strong> [0.25, 1.13, 1.87] — mainly holds cozy/vibe info, some cheap/flavor, little about spicy/fast.
+    <strong style="color:#555;">Alex</strong> [2.031, 1.303, 0.479] — mainly holds spicy/fast info, some cheap/flavor, little about cozy/vibe.<br>
+    <strong style="color:#555;">Emma</strong> [0.404, 1.217, 1.189] — holds cheap/flavor and cozy/vibe info fairly equally, little about spicy/fast.<br>
+    <strong style="color:#555;">Daniel</strong> [0.526, 1.320, 1.949] — mainly holds cozy/vibe info, some cheap/flavor, little about spicy/fast.
   </p>
 
   <p>We compute a score for every (query, key) pair using the <strong>dot product</strong>. The dot product measures how much one vector points in the direction of another — two vectors that are perfectly aligned score high; two that are orthogonal score zero.</p>
@@ -388,15 +388,15 @@
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     \begin{aligned}
-    Q_{\text{Alex}}   \cdot K_{\text{Alex}}   &= [2.90, 0.20] \cdot [2.90, 0.35] = 2.90\times2.90 + 0.20\times0.35 = 8.48 \\
-    Q_{\text{Alex}}   \cdot K_{\text{Emma}}   &= [2.90, 0.20] \cdot [1.16, 1.25] = 2.90\times1.16 + 0.20\times1.25 = 3.61 \\
-    Q_{\text{Alex}}   \cdot K_{\text{Daniel}} &= [2.90, 0.20] \cdot [0.42, 2.83] = 2.90\times0.42 + 0.20\times2.83 = 1.79 \\[6pt]
-    Q_{\text{Emma}}   \cdot K_{\text{Alex}}   &= [1.16, 1.12] \cdot [2.90, 0.35] = 1.16\times2.90 + 1.12\times0.35 = 3.75 \\
-    Q_{\text{Emma}}   \cdot K_{\text{Emma}}   &= [1.16, 1.12] \cdot [1.16, 1.25] = 1.16\times1.16 + 1.12\times1.25 = 2.75 \\
-    Q_{\text{Emma}}   \cdot K_{\text{Daniel}} &= [1.16, 1.12] \cdot [0.42, 2.83] = 1.16\times0.42 + 1.12\times2.83 = 3.66 \\[6pt]
-    Q_{\text{Daniel}} \cdot K_{\text{Alex}}   &= [0.42, 1.87] \cdot [2.90, 0.35] = 0.42\times2.90 + 1.87\times0.35 = 1.87 \\
-    Q_{\text{Daniel}} \cdot K_{\text{Emma}}   &= [0.42, 1.87] \cdot [1.16, 1.25] = 0.42\times1.16 + 1.87\times1.25 = 2.83 \\
-    Q_{\text{Daniel}} \cdot K_{\text{Daniel}} &= [0.42, 1.87] \cdot [0.42, 2.83] = 0.42\times0.42 + 1.87\times2.83 = 5.47
+    Q_{\text{Alex}}   \cdot K_{\text{Alex}}   &= [2.885, 0.474] \cdot [2.850, 0.610] = 2.885\times2.850 + 0.474\times0.610 = 8.511 \\
+    Q_{\text{Alex}}   \cdot K_{\text{Emma}}   &= [2.885, 0.474] \cdot [1.260, 1.338] = 2.885\times1.260 + 0.474\times1.338 = 4.269 \\
+    Q_{\text{Alex}}   \cdot K_{\text{Daniel}} &= [2.885, 0.474] \cdot [0.701, 2.796] = 2.885\times0.701 + 0.474\times2.796 = 3.347 \\[6pt]
+    Q_{\text{Emma}}   \cdot K_{\text{Alex}}   &= [1.293, 1.210] \cdot [2.850, 0.610] = 1.293\times2.850 + 1.210\times0.610 = 4.423 \\
+    Q_{\text{Emma}}   \cdot K_{\text{Emma}}   &= [1.293, 1.210] \cdot [1.260, 1.338] = 1.293\times1.260 + 1.210\times1.338 = 3.248 \\
+    Q_{\text{Emma}}   \cdot K_{\text{Daniel}} &= [1.293, 1.210] \cdot [0.701, 2.796] = 1.293\times0.701 + 1.210\times2.796 = 4.289 \\[6pt]
+    Q_{\text{Daniel}} \cdot K_{\text{Alex}}   &= [0.742, 1.921] \cdot [2.850, 0.610] = 0.742\times2.850 + 1.921\times0.610 = 3.287 \\
+    Q_{\text{Daniel}} \cdot K_{\text{Emma}}   &= [0.742, 1.921] \cdot [1.260, 1.338] = 0.742\times1.260 + 1.921\times1.338 = 3.506 \\
+    Q_{\text{Daniel}} \cdot K_{\text{Daniel}} &= [0.742, 1.921] \cdot [0.701, 2.796] = 0.742\times0.701 + 1.921\times2.796 = 5.891
     \end{aligned}
     \]
   </div>
@@ -407,14 +407,14 @@
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     QK^\top =
-    \begin{bmatrix} 2.90 & 0.20 \\ 1.16 & 1.12 \\ 0.42 & 1.87 \end{bmatrix}
-    \begin{bmatrix} 2.90 & 1.16 & 0.42 \\ 0.35 & 1.25 & 2.83 \end{bmatrix}
+    \begin{bmatrix} 2.885 & 0.474 \\ 1.293 & 1.210 \\ 0.742 & 1.921 \end{bmatrix}
+    \begin{bmatrix} 2.850 & 1.260 & 0.701 \\ 0.610 & 1.338 & 2.796 \end{bmatrix}
     =
     \begin{bmatrix}
      & \text{Alex} & \text{Emma} & \text{Daniel} \\
-    \text{Alex}   & 8.48 & 3.61 & 1.79 \\
-    \text{Emma}   & 3.75 & 2.75 & 3.66 \\
-    \text{Daniel} & 1.87 & 2.83 & 5.47
+    \text{Alex}   & 8.511 & 4.269 & 3.347 \\
+    \text{Emma}   & 4.423 & 3.248 & 4.289 \\
+    \text{Daniel} & 3.287 & 3.506 & 5.891
     \end{bmatrix}
     \]
   </div>
@@ -426,17 +426,17 @@
     S = \frac{QK^\top}{\sqrt{d_k}} = \frac{QK^\top}{\sqrt{2}} \approx
     \begin{bmatrix}
      & \text{Alex} & \text{Emma} & \text{Daniel} \\
-    \text{Alex}   & 5.99 & 2.55 & 1.27 \\
-    \text{Emma}   & 2.65 & 1.95 & 2.59 \\
-    \text{Daniel} & 1.32 & 2.00 & 3.87
+    \text{Alex}   & 6.018 & 3.018 & 2.367 \\
+    \text{Emma}   & 3.127 & 2.297 & 3.032 \\
+    \text{Daniel} & 2.325 & 2.479 & 4.165
     \end{bmatrix}
     \]
   </div>
 
   <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
-    <strong style="color:#555;">Alex → Alex = 8.48 → 5.99</strong> — his intent (intent₁=2.90) strongly matches his own knowledge (knows₁=2.90).<br>
-    <strong style="color:#555;">Alex → Daniel = 1.79 → 1.27</strong> — some overlap, but Alex's intent₁ doesn't align well with Daniel's knows₂-dominant profile.<br>
-    <strong style="color:#555;">Daniel → Daniel = 5.47 → 3.87</strong> — Daniel's intent (intent₂=1.87) strongly aligns with his own knowledge (knows₂=2.83).
+    <strong style="color:#555;">Alex → Alex = 8.511 → 6.018</strong> — his intent (intent₁=2.885) strongly matches his own knowledge (knows₁=2.850).<br>
+    <strong style="color:#555;">Alex → Daniel = 3.347 → 2.367</strong> — some overlap, but Alex's intent₁ doesn't align well with Daniel's knows₂-dominant profile.<br>
+    <strong style="color:#555;">Daniel → Daniel = 5.891 → 4.165</strong> — Daniel's intent (intent₂=1.921) strongly aligns with his own knowledge (knows₂=2.796).
   </p>
 
   <hr>
@@ -445,24 +445,24 @@
 
   <p>We now apply softmax to each row of S. Each row represents one person's scores across all others — softmax turns these into attention weights: how much should I draw from each person's knowledge?</p>
 
-  <p><strong>Alex's row: [5.99, 2.55, 1.27]</strong></p>
+  <p><strong>Alex's row: [6.018, 3.018, 2.367]</strong></p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
-    \text{softmax}([5.99, 2.55, 1.27]) = \frac{[e^{5.99},\ e^{2.55},\ e^{1.27}]}{e^{5.99} + e^{2.55} + e^{1.27}} = \frac{[399,\ 12.81,\ 3.56]}{415.37} \approx [0.961,\ 0.031,\ 0.009]
+    \text{softmax}([6.018, 3.018, 2.367]) = \frac{[e^{6.018},\ e^{3.018},\ e^{2.367}]}{e^{6.018} + e^{3.018} + e^{2.367}} = \frac{[409.9,\ 20.45,\ 10.67]}{441.0} \approx [0.929,\ 0.046,\ 0.024]
     \]
   </div>
 
-  <p><strong>Emma's row: [2.65, 1.95, 2.59]</strong></p>
+  <p><strong>Emma's row: [3.127, 2.297, 3.032]</strong></p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
-    \text{softmax}([2.65, 1.95, 2.59]) = \frac{[e^{2.65},\ e^{1.95},\ e^{2.59}]}{e^{2.65} + e^{1.95} + e^{2.59}} = \frac{[14.15,\ 7.03,\ 13.33]}{34.51} \approx [0.410,\ 0.204,\ 0.386]
+    \text{softmax}([3.127, 2.297, 3.032]) = \frac{[e^{3.127},\ e^{2.297},\ e^{3.032}]}{e^{3.127} + e^{2.297} + e^{3.032}} = \frac{[22.79,\ 9.94,\ 20.74]}{53.47} \approx [0.426,\ 0.186,\ 0.388]
     \]
   </div>
 
-  <p><strong>Daniel's row: [1.32, 2.00, 3.87]</strong></p>
+  <p><strong>Daniel's row: [2.325, 2.479, 4.165]</strong></p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
-    \text{softmax}([1.32, 2.00, 3.87]) = \frac{[e^{1.32},\ e^{2.00},\ e^{3.87}]}{e^{1.32} + e^{2.00} + e^{3.87}} = \frac{[3.74,\ 7.39,\ 47.94]}{59.07} \approx [0.063,\ 0.125,\ 0.812]
+    \text{softmax}([2.325, 2.479, 4.165]) = \frac{[e^{2.325},\ e^{2.479},\ e^{4.165}]}{e^{2.325} + e^{2.479} + e^{4.165}} = \frac{[10.22,\ 11.93,\ 64.34]}{86.49} \approx [0.118,\ 0.138,\ 0.744]
     \]
   </div>
 
@@ -471,17 +471,17 @@
     \[
     A = \text{softmax}(S) = \begin{bmatrix}
      & \text{Alex} & \text{Emma} & \text{Daniel} \\
-    \text{Alex}   & 0.961 & 0.031 & 0.009 \\
-    \text{Emma}   & 0.410 & 0.204 & 0.386 \\
-    \text{Daniel} & 0.063 & 0.125 & 0.812
+    \text{Alex}   & 0.929 & 0.046 & 0.024 \\
+    \text{Emma}   & 0.426 & 0.186 & 0.388 \\
+    \text{Daniel} & 0.118 & 0.138 & 0.744
     \end{bmatrix}
     \]
   </div>
 
   <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
-    <strong style="color:#555;">Alex</strong> — scores [5.99, 2.55, 1.27] have a large gap, so he draws mostly from himself (0.961).<br>
-    <strong style="color:#555;">Emma</strong> — scores [2.65, 1.95, 2.59] are close, so she draws roughly equally from Alex (0.410) and Daniel (0.386).<br>
-    <strong style="color:#555;">Daniel</strong> — scores [1.32, 2.00, 3.87] heavily favor himself (0.812).
+    <strong style="color:#555;">Alex</strong> — scores [6.018, 3.018, 2.367] have a large gap, so he draws mostly from himself (0.929).<br>
+    <strong style="color:#555;">Emma</strong> — scores [3.127, 2.297, 3.032] are close, so she draws roughly equally from Alex (0.426) and Daniel (0.388).<br>
+    <strong style="color:#555;">Daniel</strong> — scores [2.325, 2.479, 4.165] heavily favor himself (0.744).
   </p>
 
   <hr>
@@ -496,21 +496,21 @@
     \[
     \text{Output} = A \cdot V =
     \begin{bmatrix}
-    0.961 & 0.031 & 0.009 \\
-    0.410 & 0.204 & 0.386 \\
-    0.063 & 0.125 & 0.812
+    0.929 & 0.046 & 0.024 \\
+    0.426 & 0.186 & 0.388 \\
+    0.118 & 0.138 & 0.744
     \end{bmatrix}
     \begin{bmatrix}
-    1.95 & 1.10 & 0.20 \\
-    0.20 & 1.09 & 1.12 \\
-    0.25 & 1.13 & 1.87
+    2.031 & 1.303 & 0.479 \\
+    0.404 & 1.217 & 1.189 \\
+    0.526 & 1.320 & 1.949
     \end{bmatrix}
     =
     \begin{bmatrix}
      & \text{info}_1 & \text{info}_2 & \text{info}_3 \\
-    \text{Alex}   & 1.880 & 1.091 & 0.243 \\
-    \text{Emma}   & 0.937 & 0.884 & 1.005 \\
-    \text{Daniel} & 0.453 & 1.185 & 1.671
+    \text{Alex}   & 1.909 & 1.270 & 0.533 \\
+    \text{Emma}   & 1.142 & 1.292 & 1.068 \\
+    \text{Daniel} & 0.697 & 1.310 & 1.666
     \end{bmatrix}
     \]
   </div>
@@ -520,23 +520,23 @@
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     \begin{aligned}
-    \text{Alex}_{\text{info}_1} &= 0.961\times1.95 + 0.031\times0.20 + 0.009\times0.25 = 1.880 \\
-    \text{Alex}_{\text{info}_2} &= 0.961\times1.10 + 0.031\times1.09 + 0.009\times1.13 = 1.091 \\
-    \text{Alex}_{\text{info}_3} &= 0.961\times0.20 + 0.031\times1.12 + 0.009\times1.87 = 0.243 \\[6pt]
-    \text{Emma}_{\text{info}_1} &= 0.410\times1.95 + 0.204\times0.20 + 0.386\times0.25 = 0.937 \\
-    \text{Emma}_{\text{info}_2} &= 0.410\times1.10 + 0.204\times1.09 + 0.386\times1.13 = 0.884 \\
-    \text{Emma}_{\text{info}_3} &= 0.410\times0.20 + 0.204\times1.12 + 0.386\times1.87 = 1.005 \\[6pt]
-    \text{Daniel}_{\text{info}_1} &= 0.063\times1.95 + 0.125\times0.20 + 0.812\times0.25 = 0.453 \\
-    \text{Daniel}_{\text{info}_2} &= 0.063\times1.10 + 0.125\times1.09 + 0.812\times1.13 = 1.185 \\
-    \text{Daniel}_{\text{info}_3} &= 0.063\times0.20 + 0.125\times1.12 + 0.812\times1.87 = 1.671
+    \text{Alex}_{\text{info}_1} &= 0.929\times2.031 + 0.046\times0.404 + 0.024\times0.526 = 1.909 \\
+    \text{Alex}_{\text{info}_2} &= 0.929\times1.303 + 0.046\times1.217 + 0.024\times1.320 = 1.270 \\
+    \text{Alex}_{\text{info}_3} &= 0.929\times0.479 + 0.046\times1.189 + 0.024\times1.949 = 0.533 \\[6pt]
+    \text{Emma}_{\text{info}_1} &= 0.426\times2.031 + 0.186\times0.404 + 0.388\times0.526 = 1.142 \\
+    \text{Emma}_{\text{info}_2} &= 0.426\times1.303 + 0.186\times1.217 + 0.388\times1.320 = 1.292 \\
+    \text{Emma}_{\text{info}_3} &= 0.426\times0.479 + 0.186\times1.189 + 0.388\times1.949 = 1.068 \\[6pt]
+    \text{Daniel}_{\text{info}_1} &= 0.118\times2.031 + 0.138\times0.404 + 0.744\times0.526 = 0.697 \\
+    \text{Daniel}_{\text{info}_2} &= 0.118\times1.303 + 0.138\times1.217 + 0.744\times1.320 = 1.310 \\
+    \text{Daniel}_{\text{info}_3} &= 0.118\times0.479 + 0.138\times1.189 + 0.744\times1.949 = 1.666
     \end{aligned}
     \]
   </div>
 
   <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
-    <strong style="color:#555;">Alex</strong> [1.880, 1.091, 0.243] — output dominated by info₁ (spicy/fast). He paid 96.1% attention to himself, and his own V is strongest in info₁.<br>
-    <strong style="color:#555;">Emma</strong> [0.937, 0.884, 1.005] — output spread across all three dimensions. She split attention between Alex and Daniel, whose V vectors complement each other.<br>
-    <strong style="color:#555;">Daniel</strong> [0.453, 1.185, 1.671] — output dominated by info₃ (cozy/vibe). He paid 81.2% attention to himself, and his own V is strongest in info₃.
+    <strong style="color:#555;">Alex</strong> [1.909, 1.270, 0.533] — output dominated by info₁ (spicy/fast). He paid 92.9% attention to himself, and his own V is strongest in info₁.<br>
+    <strong style="color:#555;">Emma</strong> [1.142, 1.292, 1.068] — output spread across all three dimensions. She split attention between Alex and Daniel, whose V vectors complement each other.<br>
+    <strong style="color:#555;">Daniel</strong> [0.697, 1.310, 1.666] — output dominated by info₃ (cozy/vibe). He paid 74.4% attention to himself, and his own V is strongest in info₃.
   </p>
 
   <div class="callout">
