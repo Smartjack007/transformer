@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How Does a Model Learn?</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #faf9f7;
+      color: #1a1a18;
+      line-height: 1.75;
+      font-size: 16px;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+
+    h1 { font-size: 26px; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    h2 { font-size: 18px; font-weight: 600; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+    p  { margin-bottom: 1rem; color: #444441; }
+    p strong { color: #1a1a18; }
+    em { color: #666; }
+
+    .subtitle { font-size: 14px; color: #888780; margin-bottom: 2.5rem; line-height: 1.6; }
+    hr { border: none; border-top: 1px solid #e8e6e0; margin: 2rem 0; }
+
+    /* Callout */
+    .callout {
+      border-left: 3px solid #d3d1c7;
+      padding: 12px 16px;
+      margin: 1.25rem 0;
+      border-radius: 0 8px 8px 0;
+      background: #f4f3ee;
+    }
+    .callout p { margin: 0; font-size: 14px; color: #555; }
+
+    /* Formula / code block */
+    .formula {
+      background: #f4f3ee;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-family: "SF Mono", "Fira Code", "Menlo", monospace;
+      font-size: 13px;
+      color: #1a1a18;
+      margin: 1rem 0;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* Setup cards grid */
+    .setup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin: 1.25rem 0;
+    }
+    .setup-card {
+      background: #f4f3ee;
+      border: 1px solid #e8e6e0;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .setup-card .k {
+      font-size: 11px;
+      color: #888780;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .setup-card .v {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1a18;
+      line-height: 1.5;
+    }
+
+    /* Formula pill row */
+    .formula-row {
+      margin: 1rem 0;
+    }
+    .formula-pill {
+      display: inline-block;
+      background: #f4f3ee;
+      border: 1px solid #e8e6e0;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 14px;
+      color: #1a1a18;
+    }
+
+    /* Flow steps */
+    .flow-steps {
+      border: 1px solid #e8e6e0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 1.25rem 0;
+    }
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e8e6e0;
+    }
+    .flow-step:last-child { border-bottom: none; }
+    .flow-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .flow-step-title { font-size: 14px; font-weight: 600; color: #1a1a18; margin-bottom: 2px; }
+    .flow-step-sub { font-size: 12px; color: #888780; }
+    .flow-step-code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 12px;
+      background: #f4f3ee;
+      border: 1px solid #e8e6e0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-top: 6px;
+      display: inline-block;
+      color: #1a1a18;
+    }
+
+    /* Training table */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e8e6e0;
+      border-radius: 10px;
+      margin: 1.25rem 0;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; }
+    thead tr { background: #f4f3ee; }
+    th {
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      color: #888780;
+      padding: 10px 14px 10px 14px;
+      border-bottom: 1px solid #e8e6e0;
+      white-space: nowrap;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 9px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid #e8e6e0;
+      white-space: nowrap;
+      font-family: "SF Mono", "Fira Code", monospace;
+      color: #444441;
+    }
+    tr:last-child td { border-bottom: none; }
+    td.step-cell { font-weight: 700; color: #1a1a18; text-align: center; background: #f4f3ee; }
+    td.loss-good { color: #3B6D11; font-weight: 600; }
+    td.loss-ok   { color: #9A6B00; font-weight: 600; }
+    td.loss-bad  { color: #993C1D; font-weight: 600; }
+    td.err-good  { color: #3B6D11; font-weight: 600; }
+    td.err-ok    { color: #9A6B00; font-weight: 600; }
+    td.err-bad   { color: #993C1D; font-weight: 600; }
+
+    /* Loss bar chart */
+    .loss-viz {
+      background: #f4f3ee;
+      border: 1px solid #e8e6e0;
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin: 1.25rem 0;
+    }
+    .loss-viz-label {
+      font-size: 11px;
+      color: #888780;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    .bar-group { display: flex; flex-direction: column; gap: 8px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; }
+    .bar-step { font-family: "SF Mono", monospace; font-size: 11px; color: #888780; width: 44px; text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 24px; background: #e8e6e0; border-radius: 4px; position: relative; overflow: hidden; }
+    .bar-fill { height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; border-radius: 4px; }
+    .bar-val { font-family: "SF Mono", monospace; font-size: 11px; color: #fff; font-weight: 700; }
+
+    /* Insight cards */
+    .insights { display: flex; flex-direction: column; gap: 10px; margin: 1.25rem 0; }
+    .insight {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      background: #f4f3ee;
+      border: 1px solid #e8e6e0;
+      border-radius: 10px;
+    }
+    .insight-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .insight h4 { font-size: 14px; font-weight: 600; color: #1a1a18; margin-bottom: 3px; }
+    .insight p { font-size: 13px; color: #888780; margin: 0; }
+
+    /* Loop flow diagram */
+    .flow-loop-diagram {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0;
+      margin: 1.25rem 0;
+      justify-content: center;
+      border: 1px solid #e8e6e0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .loop-node {
+      background: #1a1a18;
+      color: #faf9f7;
+      padding: 13px 18px;
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.4;
+      flex: 1 1 100px;
+    }
+    .loop-node span {
+      display: block;
+      color: #888780;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+      font-family: "SF Mono", monospace;
+    }
+    .loop-arrow {
+      color: #888780;
+      font-size: 16px;
+      padding: 0 2px;
+      background: #1a1a18;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .loop-caption {
+      width: 100%;
+      text-align: center;
+      font-size: 11px;
+      color: #888780;
+      background: #f4f3ee;
+      padding: 9px 16px;
+      border-top: 1px solid #e8e6e0;
+      letter-spacing: 0.06em;
+    }
+
+    /* Derivation block */
+    .deriv-box {
+      background: #1a1a18;
+      color: #faf9f7;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin: 1rem 0;
+    }
+    .deriv-label {
+      font-size: 10px;
+      color: #888780;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .deriv-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .deriv-eq { font-family: "SF Mono", monospace; font-size: 14px; color: #faf9f7; }
+    .deriv-frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: "SF Mono", monospace;
+      font-size: 12px;
+      gap: 2px;
+    }
+    .deriv-top { border-bottom: 1px solid rgba(255,255,255,0.4); padding-bottom: 4px; white-space: nowrap; color: #faf9f7; }
+    .deriv-bot { padding-top: 2px; white-space: nowrap; color: #faf9f7; }
+    .deriv-comment { font-size: 11px; color: rgba(255,255,255,0.4); font-style: italic; }
+
+    .formula-result {
+      background: #f4f3ee;
+      border: 1px solid #e8e6e0;
+      border-left: 3px solid #3B6D11;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-family: "SF Mono", monospace;
+      font-size: 13px;
+      color: #3B6D11;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+
+    /* Warning note */
+    .note {
+      font-size: 13px;
+      color: #888780;
+      border-top: 1px dashed #e8e6e0;
+      padding-top: 12px;
+      margin-top: 16px;
+    }
+
+    /* Summary box */
+    .summary-box {
+      background: #1a1a18;
+      color: #faf9f7;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 2rem 0;
+      text-align: center;
+    }
+    .summary-box p { color: #888780; font-size: 15px; margin: 0; line-height: 1.7; }
+    .summary-box p + p { margin-top: 1rem; }
+    .summary-box strong { color: #fff; }
+
+    code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 13px;
+      background: #f4f3ee;
+      border: 1px solid #e8e6e0;
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: #1a1a18;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>How Does a Model Learn?</h1>
+  <p class="subtitle">A complete walkthrough of machine learning training — using a model with just two parameters.</p>
+
+  <hr>
+
+  <h2>1. Build the intuition first</h2>
+
+  <p>Imagine you're blindfolded, feeling your way around a volume knob, trying to find just the right level. You have no idea where the right position is, so you give it a random turn — too loud. You nudge it down a little. Still a bit much. Nudge it again. Slowly, you get closer and closer to that sweet spot.</p>
+
+  <div class="callout">
+    <p>Machine learning training works exactly like this: <strong>make a guess, see how far off you are, nudge things in the right direction, and repeat.</strong> Over time, the model's parameters converge toward the correct answer.</p>
+  </div>
+
+  <p>Let's walk through every step of this process with a minimal example.</p>
+
+  <hr>
+
+  <h2>2. Meet the model</h2>
+
+  <p>Our model is a single formula with two parameters:</p>
+
+  <div class="formula-row">
+    <div class="formula-pill">y = a × x + b</div>
+  </div>
+
+  <p><code>a</code> and <code>b</code> are the parameters we want to "learn." We give them arbitrary initial values before training — the goal is to make them progressively more accurate. The full experiment setup:</p>
+
+  <div class="setup-grid">
+    <div class="setup-card">
+      <div class="k">Training data</div>
+      <div class="v">x = 1<br>y_true = 4</div>
+    </div>
+    <div class="setup-card">
+      <div class="k">Initial guess</div>
+      <div class="v">a = 3<br>b = 4</div>
+    </div>
+    <div class="setup-card">
+      <div class="k">Learning rate η</div>
+      <div class="v">0.1</div>
+    </div>
+    <div class="setup-card">
+      <div class="k">Loss function</div>
+      <div class="v">squared error</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <p>The learning rate controls how much we adjust the knob each step. Too large and we overshoot; too small and we need many more steps. 0.1 is a common starting point.</p>
+  </div>
+
+  <p>With the initial parameters: <code>y_pred = 3 × 1 + 4 = 7</code>, but the true answer is 4. We're off by 3. Training starts here.</p>
+
+  <hr>
+
+  <h2>3. What happens at each step</h2>
+
+  <p>Every training round, the model does four things:</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">01</div>
+      <div>
+        <div class="flow-step-title">Predict</div>
+        <div class="flow-step-sub">Use the current a and b to compute y_pred.</div>
+        <div class="flow-step-code">y_pred = a × x + b</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">02</div>
+      <div>
+        <div class="flow-step-title">Compute error and Loss</div>
+        <div class="flow-step-sub">The difference between prediction and truth is the error. Squaring it gives the Loss. Squaring penalizes large errors far more than small ones, making the training signal clearer.</div>
+        <div class="flow-step-code">error = y_pred - y_true&#10;Loss  = error²</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EEEDFE;color:#534AB7;">03</div>
+      <div>
+        <div class="flow-step-title">Compute the gradient (assigning blame)</div>
+        <div class="flow-step-sub">This step answers: if we increase a by a tiny amount, how does Loss change? The steeper the change, the more a is "responsible" for the current error.</div>
+
+        <div class="deriv-box" style="margin-top:10px;">
+          <div class="deriv-label">Definition of gradient</div>
+          <div class="deriv-line">
+            <span class="deriv-eq">gradient =</span>
+            <span class="deriv-frac">
+              <span class="deriv-top">L(a + Δa) − L(a)</span>
+              <span class="deriv-bot">Δa</span>
+            </span>
+            <span class="deriv-comment">as Δa → 0</span>
+          </div>
+        </div>
+
+        <p style="font-size:13px;color:#444441;margin:10px 0 4px;">Plugging in numbers — given L(a) = (ax + b − y_true)², let e = error:</p>
+        <div class="flow-step-code">L(a + Δa) = (e + Δa·x)² = e² + 2e·Δa·x + (Δa·x)²
+L(a + Δa) − L(a) = 2e·Δa·x + (Δa·x)²
+Divide by Δa, let Δa → 0:</div>
+
+        <div class="formula-result">∂L/∂a = 2 × error × x　　∂L/∂b = 2 × error</div>
+
+        <p style="font-size:12px;color:#888780;margin-top:6px;margin-bottom:0;">The gradient is not a magic formula — it's just the result of expanding the Loss definition and cancelling terms step by step.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E6F1FB;color:#185FA5;">04</div>
+      <div>
+        <div class="flow-step-title">Update parameters</div>
+        <div class="flow-step-sub">Nudge a and b in the direction that reduces the Loss. The learning rate controls how big a nudge.</div>
+        <div class="flow-step-code">a = a - 0.1 × (∂L/∂a)&#10;b = b - 0.1 × (∂L/∂b)</div>
+      </div>
+    </div>
+  </div>
+
+  <p>Update done. Start the next round. Repeat all four steps.</p>
+
+  <hr>
+
+  <h2>4. Watching the numbers change</h2>
+
+  <p>The table below records parameters, predictions, errors, and loss at each step. Focus on the <strong>error</strong> and <strong>Loss</strong> columns — watch them shrink step by step.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Step</th>
+          <th>a</th>
+          <th>b</th>
+          <th>y_pred</th>
+          <th>error</th>
+          <th>grad ∂a</th>
+          <th>grad ∂b</th>
+          <th>Loss</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="step-cell">0</td>
+          <td>3.0000</td><td>4.0000</td>
+          <td>7.0000</td>
+          <td class="err-bad">3.0000</td>
+          <td>6.0000</td><td>6.0000</td>
+          <td class="loss-bad">9.0000</td>
+        </tr>
+        <tr>
+          <td class="step-cell">1</td>
+          <td>2.4000</td><td>3.4000</td>
+          <td>5.8000</td>
+          <td class="err-bad">1.8000</td>
+          <td>3.6000</td><td>3.6000</td>
+          <td class="loss-bad">3.2400</td>
+        </tr>
+        <tr>
+          <td class="step-cell">2</td>
+          <td>2.0400</td><td>3.0400</td>
+          <td>5.0800</td>
+          <td class="err-ok">1.0800</td>
+          <td>2.1600</td><td>2.1600</td>
+          <td class="loss-ok">1.1664</td>
+        </tr>
+        <tr>
+          <td class="step-cell">3</td>
+          <td>1.8240</td><td>2.8240</td>
+          <td>4.6480</td>
+          <td class="err-ok">0.6480</td>
+          <td>1.2960</td><td>1.2960</td>
+          <td class="loss-ok">0.4199</td>
+        </tr>
+        <tr>
+          <td class="step-cell">4</td>
+          <td>1.6944</td><td>2.6944</td>
+          <td>4.3888</td>
+          <td class="err-good">0.3888</td>
+          <td>0.7776</td><td>0.7776</td>
+          <td class="loss-good">0.1512</td>
+        </tr>
+        <tr>
+          <td class="step-cell">5</td>
+          <td>1.6166</td><td>2.6166</td>
+          <td>4.2332</td>
+          <td class="err-good">0.2332</td>
+          <td>0.4664</td><td>0.4664</td>
+          <td class="loss-good">0.0544</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>A visual sense of how Loss drops —</p>
+
+  <div class="loss-viz">
+    <div class="loss-viz-label">Loss over training steps (relative to initial value)</div>
+    <div class="bar-group">
+      <div class="bar-row">
+        <div class="bar-step">Step 0</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:100%;background:#993C1D;"><span class="bar-val">9.00</span></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-step">Step 1</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:36%;background:#C05621;"><span class="bar-val">3.24</span></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-step">Step 2</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:13%;background:#9A6B00;"><span class="bar-val">1.17</span></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-step">Step 3</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:4.7%;background:#7A7A00;min-width:44px;"><span class="bar-val">0.42</span></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-step">Step 4</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:1.7%;background:#3B6D11;min-width:44px;"><span class="bar-val">0.15</span></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-step">Step 5</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0.6%;background:#2D5A0E;min-width:44px;"><span class="bar-val">0.05</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    ⚠️ We only have one data point (x=1, y=4), so any a and b satisfying a+b=4 would predict perfectly. In practice you need large, diverse datasets to push the parameters toward a solution that genuinely generalises.
+  </div>
+
+  <hr>
+
+  <h2>5. Patterns and principles</h2>
+
+  <p>What do you notice?</p>
+
+  <div class="insights">
+    <div class="insight">
+      <div class="insight-icon">📉</div>
+      <div>
+        <h4>Smaller error → smaller steps</h4>
+        <p>The gradient shrinks as the error shrinks, so each update automatically becomes more cautious. The closer you get to the target, the lighter the touch.</p>
+      </div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">⚖️</div>
+      <div>
+        <h4>a and b are corrected in sync</h4>
+        <p>In this example x=1, so both parameters receive identical gradients and move together. In real models, each parameter gets its own distinct gradient.</p>
+      </div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">♾️</div>
+      <div>
+        <h4>Training is iteration, not solving</h4>
+        <p>The model never "calculates" the right answer — it approaches it incrementally. This is the core idea behind how deep learning handles complex problems.</p>
+      </div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">📦</div>
+      <div>
+        <h4>One data point is not enough</h4>
+        <p>Both a=1, b=3 and a=0, b=4 satisfy a+b=4. Real training requires massive, diverse datasets to push the parameters toward a solution that actually generalises.</p>
+      </div>
+    </div>
+  </div>
+
+  <p>Keep this skeleton in mind — every neural network, no matter how large, loops through the same four steps:</p>
+
+  <div class="flow-loop-diagram">
+    <div class="loop-node"><span>Step 1</span>Predict</div>
+    <div class="loop-arrow">→</div>
+    <div class="loop-node"><span>Step 2</span>Compute Loss</div>
+    <div class="loop-arrow">→</div>
+    <div class="loop-node"><span>Step 3</span>Gradient</div>
+    <div class="loop-arrow">→</div>
+    <div class="loop-node"><span>Step 4</span>Update</div>
+    <div class="loop-caption">↩ repeat until Loss is small enough</div>
+  </div>
+
+  <div class="summary-box">
+    <p>Training is not about computing the right answer directly. It's about <strong>reading the current error and pushing the parameters a little closer to better — one step at a time</strong>.</p>
+    <p>Two parameters or a hundred billion — <strong>the mechanism is identical</strong>.</p>
+  </div>
+
+</div>
+</body>
+</html>

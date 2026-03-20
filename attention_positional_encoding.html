@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Position Matters — Introducing Positional Encoding</title>
+<script>MathJax = { tex: { inlineMath: [['\\(','\\)']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #faf9f7;
+    color: #1a1a18;
+    line-height: 1.75;
+    font-size: 16px;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 700px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  h2 { font-size: 18px; font-weight: 600; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  p  { margin-bottom: 1rem; color: #444441; }
+  p strong { color: #1a1a18; }
+  em { color: #666; }
+
+  .subtitle { font-size: 14px; color: #888780; margin-bottom: 2.5rem; line-height: 1.6; }
+  hr { border: none; border-top: 1px solid #e8e6e0; margin: 2rem 0; }
+
+  .callout {
+    border-left: 3px solid #d3d1c7; padding: 12px 16px;
+    margin: 1.25rem 0; border-radius: 0 8px 8px 0;
+    background: #f4f3ee;
+  }
+  .callout p { margin: 0; font-size: 14px; color: #555; }
+
+  .formula {
+    background: #f4f3ee; border-radius: 8px; padding: 12px 18px;
+    font-family: "SF Mono", "Fira Code", monospace; font-size: 14px;
+    color: #1a1a18; margin: 1rem 0;
+  }
+
+  /* People cards */
+  .people-row { display: flex; gap: 12px; margin: 1.25rem 0; }
+  .person-card {
+    flex: 1; border: 1px solid #e8e6e0; border-radius: 12px;
+    padding: 14px 16px; background: #fff;
+  }
+  .person-card.highlight { border-color: #FAC775; background: #FEFCF5; }
+  .person-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .person-pos { font-size: 11px; color: #888780; margin-bottom: 8px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 600; }
+  .tag-spicy  { background: #FAECE7; color: #993C1D; }
+  .tag-cheap  { background: #EAF3DE; color: #3B6D11; }
+  .tag-cozy   { background: #EEEDFE; color: #534AB7; }
+  .tag-fast   { background: #FAEEDA; color: #BA7517; }
+  .tag-flavor { background: #E1F5EE; color: #0F6E56; }
+  .tag-vibe   { background: #E6F1FB; color: #185FA5; }
+  .tag-same   { background: #f4f3ee; color: #888780; }
+
+  /* Position table */
+  .pos-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 1rem 0; }
+  .pos-table th {
+    text-align: left; font-weight: 600; font-size: 12px; color: #888780;
+    padding: 4px 10px 8px 0; border-bottom: 1px solid #e8e6e0;
+  }
+  .pos-table td { padding: 8px 10px 8px 0; border-bottom: 1px solid #e8e6e0; color: #444441; font-size: 13px; }
+  .pos-table td:first-child { font-weight: 600; color: #1a1a18; width: 80px; }
+  .pos-table td:nth-child(2) { color: #888780; width: 100px; }
+  .highlight-row td { background: #FEFCF5; }
+  .highlight-row td:first-child { color: #BA7517; }
+
+  /* Flow steps */
+  .flow-steps { border: 1px solid #e8e6e0; border-radius: 12px; overflow: hidden; margin: 1.25rem 0; }
+  .flow-step { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-bottom: 1px solid #e8e6e0; }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-icon {
+    width: 34px; height: 34px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; font-size: 13px;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .flow-step-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .flow-step-sub { font-size: 12px; color: #888780; }
+
+  /* Summary */
+  .summary-box {
+    background: #1a1a18; color: #faf9f7; border-radius: 12px;
+    padding: 24px; margin: 2rem 0; text-align: center;
+  }
+  .summary-box p { color: #c2c0b6; font-size: 15px; margin: 0; line-height: 1.7; }
+  .summary-box p + p { margin-top: 1rem; }
+  .summary-box strong { color: #fff; }
+
+  /* Freq note */
+  .freq-row { display: flex; gap: 12px; margin: 1.25rem 0; }
+  .freq-card { flex: 1; border-radius: 10px; padding: 14px 16px; border: 1px solid transparent; }
+  .freq-card.high { background: #FAECE7; border-color: #F5C4B3; }
+  .freq-card.mid  { background: #EEEDFE; border-color: #CECBF6; }
+  .freq-card.low  { background: #E1F5EE; border-color: #9FE1CB; }
+  .freq-label { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .freq-card.high .freq-label { color: #993C1D; }
+  .freq-card.mid  .freq-label { color: #534AB7; }
+  .freq-card.low  .freq-label { color: #0F6E56; }
+  .freq-desc { font-size: 12px; color: #555; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Position Matters</h1>
+  <p class="subtitle">Frank and Alex have identical preferences. Without positional encoding, the model can't tell them apart.</p>
+
+  <hr>
+
+  <h2>1. The problem — attention has no sense of order</h2>
+
+  <p>Look at how attention computes its output:</p>
+
+  <div class="formula">Q = XW_Q,   K = XW_K,   V = XW_V</div>
+  <div class="formula">Output = softmax( QKᵀ / √d ) V</div>
+
+  <p>Every operation here is row-wise. Q[i] is computed from X[i] alone. The alignment score between person i and person j is Q[i] · K[j] — it only depends on their feature vectors, not where they sit in the sequence.</p>
+
+  <p>If you shuffled the rows of X, you'd get a shuffled Q, a shuffled K, a shuffled V — and a shuffled output. The relative scores between any two people would be identical. The model has no way to know that person 1 spoke before person 4.</p>
+
+  <p>This is not a bug — it is a direct consequence of how matrix multiplication works. But for language, order is everything.</p>
+
+  <div class="callout">
+    <p><em>"Alex recommended the restaurant Emma doesn't like"</em> and <em>"Emma recommended the restaurant Alex doesn't like"</em> use the exact same words. Swap the positions, swap the meaning. Attention, on its own, cannot make that distinction.</p>
+  </div>
+
+  <hr>
+
+  <h2>2. Frank joins the table</h2>
+
+  <p>We now have four people seated in order:</p>
+
+  <table class="pos-table">
+    <thead><tr><th>Person</th><th>Position</th><th>Profile</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row">
+        <td>Frank</td><td>pos = 1</td>
+        <td><span class="tag tag-spicy">spicy</span> <span class="tag tag-cheap">cheap</span> <span class="tag tag-fast">fast</span></td>
+      </tr>
+      <tr>
+        <td>Emma</td><td>pos = 2</td>
+        <td><span class="tag tag-cheap">cheap</span> <span class="tag tag-cozy">cozy</span></td>
+      </tr>
+      <tr>
+        <td>Daniel</td><td>pos = 3</td>
+        <td><span class="tag tag-flavor">flavor</span> <span class="tag tag-vibe">vibe</span> <span class="tag tag-cozy">cozy</span></td>
+      </tr>
+      <tr class="highlight-row">
+        <td>Alex</td><td>pos = 4</td>
+        <td><span class="tag tag-spicy">spicy</span> <span class="tag tag-cheap">cheap</span> <span class="tag tag-fast">fast</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Frank is new. And he happens to have exactly the same preference profile as Alex — same taste, same priorities, same everything:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    X = \begin{bmatrix}
+    & \text{spicy} & \text{cheap} & \text{cozy} & \text{fast} & \text{flavor} & \text{vibe} \\
+    \text{Frank}  & 0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08 \\
+    \text{Emma}   & 0.11 & 0.96 & 0.94 & 0.09 & 0.13 & 0.18 \\
+    \text{Daniel} & 0.14 & 0.17 & 0.92 & 0.11 & 0.96 & 0.95 \\
+    \text{Alex}   & 0.98 & 0.95 & 0.12 & 0.97 & 0.15 & 0.08
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Row 1 and row 4 are identical.</p>
+
+  <p>Now run them through attention. Since the rows are the same, and W_Q, W_K, W_V are the same matrices applied to both:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    Q_{\text{Frank}} = Q_{\text{Alex}}, \quad K_{\text{Frank}} = K_{\text{Alex}}, \quad V_{\text{Frank}} = V_{\text{Alex}}
+    \]
+  </div>
+
+  <p>Every alignment score involving Frank is identical to the corresponding score involving Alex. Their softmax weights are identical. Their outputs are identical.</p>
+
+  <p>The model sees two people at different positions in the sequence — one who spoke first, one who spoke last — and produces the exact same representation for both. Position 1 and position 4 are indistinguishable. Frank might as well not exist.</p>
+
+  <hr>
+
+  <h2>3. The fix — add a position label to every row</h2>
+
+  <p>The solution is straightforward: before X enters attention, add a position-specific vector to each row.</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    X' = X + P
+    \]
+  </div>
+
+  <p>P is the <strong>positional encoding matrix</strong> — same shape as X, one row per position. Each row encodes where in the sequence that person sits. The addition happens element-wise: every feature dimension of every person gets a small positional nudge.</p>
+
+  <p>After the addition, Frank and Alex's rows are no longer identical:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    X'_{\text{Frank}} = X_{\text{Frank}} + P_1, \quad X'_{\text{Alex}} = X_{\text{Alex}} + P_4
+    \]
+  </div>
+
+  <p>Since \(X_{\text{Frank}} = X_{\text{Alex}}\) but \(P_1 \neq P_4\), we get \(X'_{\text{Frank}} \neq X'_{\text{Alex}}\). From this point forward, every downstream computation — Q, K, V, alignment scores, attention weights, output — will differ between Frank and Alex.</p>
+
+  <p>Three requirements a good P needs to satisfy:</p>
+
+  <div class="callout">
+    <p><strong>Unique per position</strong> — P₁ ≠ P₂ ≠ P₃ ≠ ... so every position produces a distinct X'<br><br>
+    <strong>Consistent across sequences</strong> — position 4 always means the same thing, regardless of what's in the sequence<br><br>
+    <strong>Works for any length</strong> — the model shouldn't need to know in advance how long the sequence will be</p>
+  </div>
+
+  <p>The original Transformer paper's answer to all three: sine and cosine functions at different frequencies.</p>
+
+  <hr>
+
+  <h2>4. Designing P — sine and cosine</h2>
+
+  <p>The positional encoding for position pos and dimension i is:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    P_{pos,\ 2i} = \sin\left(\frac{pos}{10000^{2i/d}}\right), \quad
+    P_{pos,\ 2i+1} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
+    \]
+  </div>
+
+  <p>where d = 6 is the feature dimension, and i = 0, 1, 2 indexes the three sin/cos pairs. Working out each dimension:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    P_{pos,0} = \sin(pos), \quad P_{pos,1} = \cos(pos)
+    \]
+    \[
+    P_{pos,2} = \sin\!\left(\frac{pos}{21.5}\right), \quad P_{pos,3} = \cos\!\left(\frac{pos}{21.5}\right)
+    \]
+    \[
+    P_{pos,4} = \sin\!\left(\frac{pos}{464}\right), \quad P_{pos,5} = \cos\!\left(\frac{pos}{464}\right)
+    \]
+  </div>
+
+  <p>Three pairs, three frequencies. Plugging in pos = 1, 2, 3, 4:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    P = \begin{bmatrix}
+    & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{pos=1 (Frank)}  &  0.841 &  0.540 & 0.047 & 0.999 & 0.002 & 1.000 \\
+    \text{pos=2 (Emma)}   &  0.909 & -0.416 & 0.093 & 0.996 & 0.004 & 1.000 \\
+    \text{pos=3 (Daniel)} &  0.141 & -0.990 & 0.139 & 0.990 & 0.006 & 1.000 \\
+    \text{pos=4 (Alex)}   & -0.757 & -0.654 & 0.185 & 0.983 & 0.009 & 1.000
+    \end{bmatrix}
+    \]
+  </div>
+
+  <div class="freq-row">
+    <div class="freq-card high">
+      <div class="freq-label">d₀, d₁ — high frequency</div>
+      <div class="freq-desc">Changes rapidly across positions. Easy to tell pos=1 from pos=2. Good for nearby distinctions — like the seconds hand on a clock.</div>
+    </div>
+    <div class="freq-card mid">
+      <div class="freq-label">d₂, d₃ — medium frequency</div>
+      <div class="freq-desc">Changes slowly. Useful for encoding relative distance across longer sequences. Good for medium-range structure.</div>
+    </div>
+    <div class="freq-card low">
+      <div class="freq-label">d₄, d₅ — low frequency</div>
+      <div class="freq-desc">Barely moves across four positions. Across thousands of tokens, these dimensions encode long-range structure — like the hour hand on a clock.</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <p>The sine/cosine choice also has a geometric property: for any fixed offset k, the positional encoding at position pos+k can be expressed as a linear transformation of the encoding at position pos. This means the model can learn to attend to "the token k positions ago" — relative position — not just absolute position.</p>
+  </div>
+
+  <hr>
+
+  <h2>5. X' = X + P — Frank and Alex diverge</h2>
+
+  <p>Adding P to X element-wise:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    X' = X + P = \begin{bmatrix}
+    & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  & 0.98+0.841 & 0.95+0.540 & 0.12+0.047 & 0.97+0.999 & 0.15+0.002 & 0.08+1.000 \\
+    \text{Emma}   & 0.11+0.909 & 0.96-0.416 & 0.94+0.093 & 0.09+0.996 & 0.13+0.004 & 0.18+1.000 \\
+    \text{Daniel} & 0.14+0.141 & 0.17-0.990 & 0.92+0.139 & 0.11+0.990 & 0.96+0.006 & 0.95+1.000 \\
+    \text{Alex}   & 0.98-0.757 & 0.95-0.654 & 0.12+0.185 & 0.97+0.983 & 0.15+0.009 & 0.08+1.000
+    \end{bmatrix}
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    = \begin{bmatrix}
+    & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  &  1.821 &  1.490 & 0.167 & 1.969 & 0.152 & 1.080 \\
+    \text{Emma}   &  1.019 &  0.544 & 1.033 & 1.086 & 0.134 & 1.180 \\
+    \text{Daniel} &  0.281 & -0.820 & 1.059 & 1.100 & 0.966 & 1.950 \\
+    \text{Alex}   &  0.223 &  0.296 & 0.305 & 1.953 & 0.159 & 1.080
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Frank and Alex started identical. Now compare them directly:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    X'_{\text{Frank}} = [1.821,\ \ 1.490,\ 0.167,\ 1.969,\ 0.152,\ 1.080]
+    \]
+    \[
+    X'_{\text{Alex}}  = [0.223,\ \ 0.296,\ 0.305,\ 1.953,\ 0.159,\ 1.080]
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">d₀ and d₁</strong> — the high-frequency pair — show the biggest divergence. Frank at pos=1 gets a large positive nudge (+0.841, +0.540). Alex at pos=4 gets a negative nudge (−0.757, −0.654). Their d₀ values go from identical (0.98) to completely different (1.821 vs 0.223).<br><br>
+    <strong style="color:#555;">d₄ and d₅</strong> — barely move. At only four positions apart, the low-frequency pair hasn't had room to diverge yet. Across thousands of tokens, these dimensions would show meaningful separation.
+  </p>
+
+  <hr>
+
+  <h2>6. What positional encoding changes downstream</h2>
+
+  <p>X' now flows into attention exactly as X did in Part 1 and Part 2. Using the same W_Q and W_K, we compute Q' and K' for all four people:</p>
+
+  <p><strong>Q' = X' @ W_Q</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    Q'_{\text{Frank, street-stall}}  &= 1.821\times0.97 + 1.490\times0.99 + 0.167\times0.12 + 1.969\times0.98 + 0.152\times0.13 + 1.080\times0.10 = 5.319 \\
+    Q'_{\text{Frank, upscale}}       &= 1.821\times0.08 + 1.490\times0.11 + 0.167\times0.96 + 1.969\times0.09 + 0.152\times0.07 + 1.080\times0.98 = 1.716 \\[6pt]
+    Q'_{\text{Emma, street-stall}}   &= 1.019\times0.97 + 0.544\times0.99 + 1.033\times0.12 + 1.086\times0.98 + 0.134\times0.13 + 1.180\times0.10 = 2.850 \\
+    Q'_{\text{Emma, upscale}}        &= 1.019\times0.08 + 0.544\times0.11 + 1.033\times0.96 + 1.086\times0.09 + 0.134\times0.07 + 1.180\times0.98 = 2.397 \\[6pt]
+    Q'_{\text{Daniel, street-stall}} &= 0.281\times0.97 + (-0.820)\times0.99 + 1.059\times0.12 + 1.100\times0.98 + 0.966\times0.13 + 1.950\times0.10 = 0.987 \\
+    Q'_{\text{Daniel, upscale}}      &= 0.281\times0.08 + (-0.820)\times0.11 + 1.059\times0.96 + 1.100\times0.09 + 0.966\times0.07 + 1.950\times0.98 = 3.027 \\[6pt]
+    Q'_{\text{Alex, street-stall}}   &= 0.223\times0.97 + 0.296\times0.99 + 0.305\times0.12 + 1.953\times0.98 + 0.159\times0.13 + 1.080\times0.10 = 2.589 \\
+    Q'_{\text{Alex, upscale}}        &= 0.223\times0.08 + 0.296\times0.11 + 0.305\times0.96 + 1.953\times0.09 + 0.159\times0.07 + 1.080\times0.98 = 1.589
+    \end{aligned}
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    Q' = \begin{bmatrix}
+     & \text{street-stall} & \text{upscale} \\
+    \text{Frank}  & 5.319 & 1.716 \\
+    \text{Emma}   & 2.850 & 2.397 \\
+    \text{Daniel} & 0.987 & 3.027 \\
+    \text{Alex}   & 2.589 & 1.589
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
+    Before positional encoding, Frank and Alex would have been identical at [2.885, 0.474]. Now Frank is [5.319, 1.716] and Alex is [2.589, 1.589] — completely different.<br><br>
+    Emma and Daniel also shifted. Emma at pos=2 picks up a moderate positive nudge; Daniel at pos=3 gets a large negative d₁ (−0.820) which pulls his street-stall signal down and pushes his upscale signal up to 3.027 — the strongest upscale query at the table.
+  </p>
+
+  <p><strong>K' = X' @ W_K</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    K'_{\text{Frank, knows-street-stall}}  &= 1.821\times0.96 + 1.490\times0.98 + 0.167\times0.10 + 1.969\times0.97 + 0.152\times0.12 + 1.080\times0.09 = 5.271 \\
+    K'_{\text{Frank, knows-upscale}}       &= 1.821\times0.09 + 1.490\times0.11 + 0.167\times0.97 + 1.969\times0.08 + 0.152\times0.96 + 1.080\times0.99 = 1.703 \\[6pt]
+    K'_{\text{Emma, knows-street-stall}}   &= 1.019\times0.96 + 0.544\times0.98 + 1.033\times0.10 + 1.086\times0.97 + 0.134\times0.12 + 1.180\times0.09 = 2.789 \\
+    K'_{\text{Emma, knows-upscale}}        &= 1.019\times0.09 + 0.544\times0.11 + 1.033\times0.97 + 1.086\times0.08 + 0.134\times0.96 + 1.180\times0.99 = 2.538 \\[6pt]
+    K'_{\text{Daniel, knows-street-stall}} &= 0.281\times0.96 + (-0.820)\times0.98 + 1.059\times0.10 + 1.100\times0.97 + 0.966\times0.12 + 1.950\times0.09 = 0.931 \\
+    K'_{\text{Daniel, knows-upscale}}      &= 0.281\times0.09 + (-0.820)\times0.11 + 1.059\times0.97 + 1.100\times0.08 + 0.966\times0.96 + 1.950\times0.99 = 3.908 \\[6pt]
+    K'_{\text{Alex, knows-street-stall}}   &= 0.223\times0.96 + 0.296\times0.98 + 0.305\times0.10 + 1.953\times0.97 + 0.159\times0.12 + 1.080\times0.09 = 2.565 \\
+    K'_{\text{Alex, knows-upscale}}        &= 0.223\times0.09 + 0.296\times0.11 + 0.305\times0.97 + 1.953\times0.08 + 0.159\times0.96 + 1.080\times0.99 = 1.577
+    \end{aligned}
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    K' = \begin{bmatrix}
+     & \text{knows-street-stall} & \text{knows-upscale} \\
+    \text{Frank}  & 5.271 & 1.703 \\
+    \text{Emma}   & 2.789 & 2.538 \\
+    \text{Daniel} & 0.931 & 3.908 \\
+    \text{Alex}   & 2.565 & 1.577
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    The same pattern holds in K': Daniel's negative d₁ nudge pushes his knows-street-stall signal down to 0.931 but lifts his knows-upscale signal to 3.908 — the highest upscale knowledge signal at the table. Position didn't change what Daniel knows, but it changed how strongly that knowledge broadcasts.<br><br>
+    <strong style="color:#555;">Frank</strong> — massive street-stall broadcast (5.271). His pos=1 nudge amplified everything.<br>
+    <strong style="color:#555;">Emma</strong> — balanced (2.789 vs 2.538). Her pos=2 nudge is moderate in both directions.<br>
+    <strong style="color:#555;">Daniel</strong> — strongly upscale (3.908). His pos=3 negative d₁ suppressed street-stall and lifted upscale.<br>
+    <strong style="color:#555;">Alex</strong> — street-stall dominant (2.565 vs 1.577), same profile as Frank but positionally dampened.
+  </p>
+
+  <p>Let's look at V specifically, since it carries the actual content that gets blended into the output.</p>
+
+  <p><strong>Without positional encoding:</strong> Frank and Alex share the same X row, so:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    V_{\text{Frank}} = X_{\text{Frank}} \cdot W_V = X_{\text{Alex}} \cdot W_V = V_{\text{Alex}}
+    \]
+  </div>
+
+  <p>Their content contributions to the output are identical. The model cannot distinguish whose knowledge is whose.</p>
+
+  <p><strong>With positional encoding:</strong> Frank and Alex now have different X' rows, so:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    V'_{\text{Frank}} = X'_{\text{Frank}} \cdot W_V = (X_{\text{Frank}} + P_1) \cdot W_V
+    \]
+    \[
+    V'_{\text{Alex}} = X'_{\text{Alex}} \cdot W_V = (X_{\text{Alex}} + P_4) \cdot W_V
+    \]
+  </div>
+
+  <p>Since \(P_1 \neq P_4\), we get \(V'_{\text{Frank}} \neq V'_{\text{Alex}}\). The same knowledge, held by two people in different positions, now contributes differently to the final blend.</p>
+
+  <div class="callout">
+    <p>This is a subtle but important point: V is supposed to carry "what I actually know." Frank and Alex know the same things — same restaurants, same dishes, same wait times. But after positional encoding, their V vectors differ, because position has been mixed into the representation.</p>
+    <p style="margin-top:10px;">Think of it this way: Frank speaks first, before anyone else has said anything — his recommendation lands in an empty room and anchors the conversation. Alex says the exact same thing last, after Emma and Daniel have already weighed in — the context is completely different, and so is the impact. Same knowledge, different position, different meaning. Positional encoding bakes that reality into the vectors.</p>
+  </div>
+
+  <hr>
+
+  <h2>7. The full picture</h2>
+
+  <p>Positional encoding is not part of attention itself — it happens before attention, as a one-line preprocessing step. Everything in Part 1 and Part 2 still applies. The only difference is that the input is now X' instead of X.</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">X</div>
+      <div>
+        <div class="flow-step-title">Raw feature matrix</div>
+        <div class="flow-step-sub">Each row is one token's embedding — no position information yet</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">+P</div>
+      <div>
+        <div class="flow-step-title">Add positional encoding — X' = X + P</div>
+        <div class="flow-step-sub">Each row gets a position-specific nudge. Frank and Alex diverge here.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">Q</div>
+      <div>
+        <div class="flow-step-title">Q = X'W_Q — decode cravings</div>
+        <div class="flow-step-sub">Now position-aware — Frank and Alex produce different queries</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EEEDFE;color:#534AB7;">K</div>
+      <div>
+        <div class="flow-step-title">K = X'W_K — decode knowledge</div>
+        <div class="flow-step-sub">Position affects what knowledge signal each person broadcasts</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E1F5EE;color:#0F6E56;">V</div>
+      <div>
+        <div class="flow-step-title">V = X'W_V — extract content</div>
+        <div class="flow-step-sub">Position affects what content each person contributes</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E6F1FB;color:#185FA5;">∑</div>
+      <div>
+        <div class="flow-step-title">softmax(QKᵀ/√d) @ V → output</div>
+        <div class="flow-step-sub">Attention now operates on position-aware representations</div>
+      </div>
+    </div>
+  </div>
+
+  <p>Two things worth noting before we move on:</p>
+
+  <p><strong>Positional encoding is added, not concatenated.</strong> It would be natural to think "just append the position as an extra feature." But addition keeps the dimensionality the same — the rest of the architecture doesn't need to change. And because the model learns W_Q, W_K, W_V jointly with the positional signal already mixed in, it learns to disentangle content from position as needed.</p>
+
+  <p><strong>The sine/cosine encoding is fixed, not learned.</strong> The original Transformer paper used the formula above — no training required. Later models like BERT learned positional embeddings instead, treating each position as a trainable vector. Both approaches work. The sine/cosine version has the advantage of generalizing to sequence lengths longer than anything seen during training.</p>
+
+  <div class="summary-box">
+    <p>Attention is powerful but blind to order. Positional encoding gives it eyes. <strong>X' = X + P</strong> is a single line — but it's the line that turns a bag of features into a sequence.</p>
+    <p>Frank and Alex walk in with identical profiles. They walk out of attention with different representations. The only thing that changed was where they sat.</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masked Attention — Only Look Back</title>
+<script>MathJax = { tex: { inlineMath: [['\\(','\\)']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #faf9f7;
+    color: #1a1a18;
+    line-height: 1.75;
+    font-size: 16px;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 700px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  h2 { font-size: 18px; font-weight: 600; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  p  { margin-bottom: 1rem; color: #444441; }
+  p strong { color: #1a1a18; }
+  em { color: #666; }
+
+  .subtitle { font-size: 14px; color: #888780; margin-bottom: 2.5rem; line-height: 1.6; }
+  hr { border: none; border-top: 1px solid #e8e6e0; margin: 2rem 0; }
+
+  .callout {
+    border-left: 3px solid #d3d1c7; padding: 12px 16px;
+    margin: 1.25rem 0; border-radius: 0 8px 8px 0;
+    background: #f4f3ee;
+  }
+  .callout p { margin: 0; font-size: 14px; color: #555; }
+
+  .formula {
+    background: #f4f3ee; border-radius: 8px; padding: 12px 18px;
+    font-family: "SF Mono", "Fira Code", monospace; font-size: 14px;
+    color: #1a1a18; margin: 1rem 0;
+  }
+
+  /* Rule table */
+  .rule-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 1.25rem 0; }
+  .rule-table th {
+    text-align: left; font-weight: 600; font-size: 12px; color: #888780;
+    padding: 4px 10px 8px 0; border-bottom: 1px solid #e8e6e0;
+  }
+  .rule-table td { padding: 8px 10px 8px 0; border-bottom: 1px solid #e8e6e0; color: #444441; font-size: 13px; vertical-align: top; }
+  .rule-table td:first-child { font-weight: 600; color: #1a1a18; width: 80px; }
+  .rule-table td:nth-child(2) { color: #888780; width: 90px; }
+  .can { color: #3B6D11; font-weight: 500; }
+  .cannot { color: #993C1D; }
+
+  /* Flow steps */
+  .flow-steps { border: 1px solid #e8e6e0; border-radius: 12px; overflow: hidden; margin: 1.25rem 0; }
+  .flow-step { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-bottom: 1px solid #e8e6e0; }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-icon {
+    width: 34px; height: 34px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; font-size: 12px;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .flow-step-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .flow-step-sub { font-size: 12px; color: #888780; }
+
+  /* Summary */
+  .summary-box {
+    background: #1a1a18; color: #faf9f7; border-radius: 12px;
+    padding: 24px; margin: 2rem 0; text-align: center;
+  }
+  .summary-box p { color: #c2c0b6; font-size: 15px; margin: 0; line-height: 1.7; }
+  .summary-box p + p { margin-top: 1rem; }
+  .summary-box strong { color: #fff; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Masked Attention — Only Look Back</h1>
+  <p class="subtitle">GPT generates one word at a time. Each word can only see what came before it — never what comes next.</p>
+
+  <hr>
+
+  <h2>1. The rule — only look back</h2>
+
+  <p>Four people are seated in order, each about to make a restaurant recommendation. The rule is simple: <strong>you can only draw from people who spoke before you.</strong> No sneaking a look at what Daniel said before Emma has finished. No asking Alex for his opinion before he's had his turn.</p>
+
+  <table class="rule-table">
+    <thead><tr><th>Person</th><th>Position</th><th>Can consult</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Frank</td><td>pos = 1</td>
+        <td><span class="can">only himself</span></td>
+      </tr>
+      <tr>
+        <td>Emma</td><td>pos = 2</td>
+        <td><span class="can">Frank, herself</span></td>
+      </tr>
+      <tr>
+        <td>Daniel</td><td>pos = 3</td>
+        <td><span class="can">Frank, Emma, himself</span></td>
+      </tr>
+      <tr>
+        <td>Alex</td><td>pos = 4</td>
+        <td><span class="can">Frank, Emma, Daniel, himself</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>This is not an arbitrary restriction. GPT generates one token at a time — left to right. When it is predicting the 4th word, the 5th word does not exist yet. Masked attention enforces this reality during training, so the model never learns to rely on information it will not have at generation time.</p>
+
+  <p>The attention matrix that results looks like this — a lower triangle of allowed connections, everything above the diagonal blocked:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    \text{allowed} = \begin{bmatrix}
+     & \text{Frank} & \text{Emma} & \text{Daniel} & \text{Alex} \\
+    \text{Frank}  & \checkmark &  &  &  \\
+    \text{Emma}   & \checkmark & \checkmark &  &  \\
+    \text{Daniel} & \checkmark & \checkmark & \checkmark &  \\
+    \text{Alex}   & \checkmark & \checkmark & \checkmark & \checkmark
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Every blank cell is a conversation that cannot happen. Emma cannot hear Daniel's opinion. Frank cannot hear anyone's but his own.</p>
+
+  <hr>
+
+  <h2>2. The mask — turning off the future</h2>
+
+  <p>After computing S = Q'Kᵀ/√d, we have a 4×4 matrix of alignment scores. Every cell has a value — including the ones representing future conversations that should not happen. We kill those cells with a mask matrix M:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    M = \begin{bmatrix}
+     & \text{Frank} & \text{Emma} & \text{Daniel} & \text{Alex} \\
+    \text{Frank}  & 0 & -\infty & -\infty & -\infty \\
+    \text{Emma}   & 0 & 0 & -\infty & -\infty \\
+    \text{Daniel} & 0 & 0 & 0 & -\infty \\
+    \text{Alex}   & 0 & 0 & 0 & 0
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>We add M to S element-wise. The allowed cells get +0 — unchanged. The blocked cells get +(−∞) — destroyed. Why −∞? Because of what softmax does to it:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{softmax}(-\infty) = \frac{e^{-\infty}}{\sum e^{x_j}} = \frac{0}{\sum e^{x_j}} = 0
+    \]
+  </div>
+
+  <p>A score of −∞ produces an attention weight of exactly 0. The blocked person contributes nothing to the output — not a little, not a tiny fraction. Zero.</p>
+
+  <div class="callout">
+    <p>In practice −∞ is approximated by a very large negative number like −1e9, but the effect is the same: after softmax, those positions vanish completely.</p>
+  </div>
+
+  <hr>
+
+  <h2>3. Applying the mask — S + M → softmax</h2>
+
+  <p>We use X' from Part 3 and the same W_Q, W_K from Part 1. First, Q' and K':</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    Q' = \begin{bmatrix}
+     & \text{street-stall} & \text{upscale} \\
+    \text{Frank}  & 5.319 & 1.716 \\
+    \text{Emma}   & 1.293 & 1.210 \\
+    \text{Daniel} & 0.742 & 1.921 \\
+    \text{Alex}   & 2.589 & 1.589
+    \end{bmatrix}
+    \qquad
+    K' = \begin{bmatrix}
+     & \text{knows-street-stall} & \text{knows-upscale} \\
+    \text{Frank}  & 5.271 & 1.703 \\
+    \text{Emma}   & 1.260 & 1.338 \\
+    \text{Daniel} & 0.701 & 2.796 \\
+    \text{Alex}   & 2.565 & 1.577
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Computing S = Q'Kᵀ / √2:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    S = \begin{bmatrix}
+     & \text{Frank} & \text{Emma} & \text{Daniel} & \text{Alex} \\
+    \text{Frank}  & 21.888 &  6.362 &  6.030 & 11.557 \\
+    \text{Emma}   &  6.276 &  2.297 &  3.032 &  3.695 \\
+    \text{Daniel} &  5.079 &  2.479 &  4.165 &  3.489 \\
+    \text{Alex}   & 11.559 &  3.810 &  4.426 &  6.468
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Adding M — future positions become −∞:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    S + M = \begin{bmatrix}
+     & \text{Frank} & \text{Emma} & \text{Daniel} & \text{Alex} \\
+    \text{Frank}  & 21.888 & -\infty &  -\infty & -\infty \\
+    \text{Emma}   &  6.276 &   2.297 &  -\infty & -\infty \\
+    \text{Daniel} &  5.079 &   2.479 &   4.165  & -\infty \\
+    \text{Alex}   & 11.559 &   3.810 &   4.426  &  6.468
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Applying softmax to each row:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{softmax}([21.888, -\infty, -\infty, -\infty]) \approx [1.000,\ 0.000,\ 0.000,\ 0.000]
+    \]
+    \[
+    \text{softmax}([6.276, 2.297, -\infty, -\infty]) = \frac{[531.7,\ 9.94]}{541.6} \approx [0.982,\ 0.018,\ 0.000,\ 0.000]
+    \]
+    \[
+    \text{softmax}([5.079, 2.479, 4.165, -\infty]) = \frac{[160.8,\ 11.93,\ 64.34]}{237.1} \approx [0.678,\ 0.050,\ 0.271,\ 0.000]
+    \]
+    \[
+    \text{softmax}([11.559, 3.810, 4.426, 6.468]) = \frac{[104800,\ 45.15,\ 83.53,\ 643.4]}{105572} \approx [0.993,\ 0.000,\ 0.001,\ 0.006]
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    A_{\text{masked}} = \begin{bmatrix}
+     & \text{Frank} & \text{Emma} & \text{Daniel} & \text{Alex} \\
+    \text{Frank}  & 1.000 & 0.000 & 0.000 & 0.000 \\
+    \text{Emma}   & 0.982 & 0.018 & 0.000 & 0.000 \\
+    \text{Daniel} & 0.678 & 0.050 & 0.271 & 0.000 \\
+    \text{Alex}   & 0.993 & 0.000 & 0.001 & 0.006
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">Frank</strong> — 100% self-attention. He has no one else to consult.<br>
+    <strong style="color:#555;">Emma</strong> — 98.2% Frank, 1.8% herself. Frank spoke first and his strong street-stall signal dominates.<br>
+    <strong style="color:#555;">Daniel</strong> — 67.8% Frank, 27.1% himself, 5.0% Emma. The first sign of genuine diversity — Daniel's own upscale pull starts to show.<br>
+    <strong style="color:#555;">Alex</strong> — 99.3% Frank, tiny contributions from Daniel and himself. Frank's positional boost makes him overwhelmingly dominant for everyone who comes after.
+  </p>
+
+  <hr>
+
+  <h2>4. Output — what each person actually hears</h2>
+
+  <p>V' = X' @ W_V gives us the content each person carries:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    V' = \begin{bmatrix}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
+    \text{Frank}  & 2.031 & 1.303 & 0.479 \\
+    \text{Emma}   & 0.404 & 1.217 & 1.189 \\
+    \text{Daniel} & 0.526 & 1.320 & 1.949 \\
+    \text{Alex}   & 2.031 & 1.303 & 0.479
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Output = A_masked @ V':</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    \text{Frank}_{\text{info-sichuan}}  &= 1.000\times2.031 = 2.031 \\
+    \text{Frank}_{\text{info-budget}}   &= 1.000\times1.303 = 1.303 \\
+    \text{Frank}_{\text{info-upscale}}  &= 1.000\times0.479 = 0.479 \\[6pt]
+    \text{Emma}_{\text{info-sichuan}}   &= 0.982\times2.031 + 0.018\times0.404 = 1.994 + 0.007 = 2.001 \\
+    \text{Emma}_{\text{info-budget}}    &= 0.982\times1.303 + 0.018\times1.217 = 1.279 + 0.022 = 1.301 \\
+    \text{Emma}_{\text{info-upscale}}   &= 0.982\times0.479 + 0.018\times1.189 = 0.470 + 0.021 = 0.491 \\[6pt]
+    \text{Daniel}_{\text{info-sichuan}} &= 0.678\times2.031 + 0.050\times0.404 + 0.271\times0.526 = 1.377 + 0.020 + 0.143 = 1.540 \\
+    \text{Daniel}_{\text{info-budget}}  &= 0.678\times1.303 + 0.050\times1.217 + 0.271\times1.320 = 0.883 + 0.061 + 0.358 = 1.302 \\
+    \text{Daniel}_{\text{info-upscale}} &= 0.678\times0.479 + 0.050\times1.189 + 0.271\times1.949 = 0.325 + 0.059 + 0.528 = 0.912 \\[6pt]
+    \text{Alex}_{\text{info-sichuan}}   &= 0.993\times2.031 + 0.000\times0.404 + 0.001\times0.526 + 0.006\times2.031 = 2.030 \\
+    \text{Alex}_{\text{info-budget}}    &= 0.993\times1.303 + 0.000\times1.217 + 0.001\times1.320 + 0.006\times1.303 = 1.303 \\
+    \text{Alex}_{\text{info-upscale}}   &= 0.993\times0.479 + 0.000\times1.189 + 0.001\times1.949 + 0.006\times0.479 = 0.481
+    \end{aligned}
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    \text{Output}_{\text{masked}} = \begin{bmatrix}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
+    \text{Frank}  & 2.031 & 1.303 & 0.479 \\
+    \text{Emma}   & 2.001 & 1.301 & 0.491 \\
+    \text{Daniel} & 1.540 & 1.302 & 0.912 \\
+    \text{Alex}   & 2.030 & 1.303 & 0.481
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
+    <strong style="color:#555;">Frank</strong> [2.031, 1.303, 0.479] — pure self-reference. His output is exactly his own V. He spoke into a void — no prior context to draw from.<br>
+    <strong style="color:#555;">Emma</strong> [2.001, 1.301, 0.491] — almost entirely Frank. She could only look back at Frank, and Frank's street-stall signal was overwhelming.<br>
+    <strong style="color:#555;">Daniel</strong> [1.540, 1.302, 0.912] — the first genuine blend. His upscale pull (0.912 in info-upscale) is the first sign of the table's flavor diversity showing up in the output.<br>
+    <strong style="color:#555;">Alex</strong> [2.030, 1.303, 0.481] — almost entirely Frank again. Despite being able to consult everyone, Frank's positional signal was so strong that Alex's output looks nearly identical to Frank's.
+  </p>
+
+  <div class="callout">
+    <p>Who speaks first matters enormously. Frank's positional encoding gave him an outsized Q signal. Everyone who came after — Emma, Daniel, Alex — ended up drawing heavily from Frank's V, regardless of their own preferences. In real language models, the early tokens in a prompt carry disproportionate influence over the entire generation. It's why prompt engineering pays so much attention to how you open — the first few words shape everything that follows.</p>
+  </div>
+
+  <hr>
+
+  <h2>5. The full picture</h2>
+
+  <p>Masked attention is regular attention with one addition: a triangular mask applied to the score matrix before softmax. Everything else — Q, K, V, the dot product, the scaling, the weighted sum — is identical.</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">X'</div>
+      <div>
+        <div class="flow-step-title">Position-aware input</div>
+        <div class="flow-step-sub">X' = X + P — from Part 3</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">QKV</div>
+      <div>
+        <div class="flow-step-title">Compute Q', K', V'</div>
+        <div class="flow-step-sub">Same as Parts 1 and 2 — project X' through W_Q, W_K, W_V</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EEEDFE;color:#534AB7;">S</div>
+      <div>
+        <div class="flow-step-title">S = Q'Kᵀ / √d — alignment scores</div>
+        <div class="flow-step-sub">Full 4×4 matrix — every pair scored</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FCEBEB;color:#A32D2D;">M</div>
+      <div>
+        <div class="flow-step-title">S + M — apply the mask</div>
+        <div class="flow-step-sub">Future positions set to −∞ — they will vanish in softmax</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">σ</div>
+      <div>
+        <div class="flow-step-title">softmax(S + M) → masked attention weights</div>
+        <div class="flow-step-sub">−∞ becomes 0. Each row sums to 1 over allowed positions only.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E6F1FB;color:#185FA5;">∑</div>
+      <div>
+        <div class="flow-step-title">A_masked @ V' → output</div>
+        <div class="flow-step-sub">Each person's output is a blend of only what they were allowed to hear</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-box">
+    <p>Masked attention doesn't change how attention works. It changes <strong>who attention is allowed to hear</strong>. The lower triangle stays open; the upper triangle is sealed. Frank speaks into silence. Alex speaks last and inherits everything — but only from those who came before.</p>
+    <p style="margin-top:1rem;">In GPT, this mask is what makes generation possible. Without it, the model would learn to cheat during training — reading the answer before giving it. With it, every prediction is made honestly, <strong>from context alone</strong>.</p>
+  </div>
+
+</div>
+</body>
+</html>
