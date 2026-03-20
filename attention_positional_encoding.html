@@ -330,32 +330,76 @@
 
   <h2>6. What positional encoding changes downstream</h2>
 
-  <p>X' now flows into attention exactly as X did in Part 1 and Part 2. Using the same W_Q, we can compute Q' for Frank and Alex:</p>
+  <p>X' now flows into attention exactly as X did in Part 1 and Part 2. Using the same W_Q and W_K, we compute Q' and K' for all four people:</p>
 
+  <p><strong>Q' = X' @ W_Q</strong></p>
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
     \begin{aligned}
-    Q'_{\text{Frank, street-stall}} &= 1.821\times0.97 + 1.490\times0.99 + 0.167\times0.12 + 1.969\times0.98 + 0.152\times0.13 + 1.080\times0.10 = 5.319 \\
-    Q'_{\text{Frank, upscale}}      &= 1.821\times0.08 + 1.490\times0.11 + 0.167\times0.96 + 1.969\times0.09 + 0.152\times0.07 + 1.080\times0.98 = 1.716 \\[6pt]
-    Q'_{\text{Alex, street-stall}}  &= 0.223\times0.97 + 0.296\times0.99 + 0.305\times0.12 + 1.953\times0.98 + 0.159\times0.13 + 1.080\times0.10 = 2.589 \\
-    Q'_{\text{Alex, upscale}}       &= 0.223\times0.08 + 0.296\times0.11 + 0.305\times0.96 + 1.953\times0.09 + 0.159\times0.07 + 1.080\times0.98 = 1.589
+    Q'_{\text{Frank, street-stall}}  &= 1.821\times0.97 + 1.490\times0.99 + 0.167\times0.12 + 1.969\times0.98 + 0.152\times0.13 + 1.080\times0.10 = 5.319 \\
+    Q'_{\text{Frank, upscale}}       &= 1.821\times0.08 + 1.490\times0.11 + 0.167\times0.96 + 1.969\times0.09 + 0.152\times0.07 + 1.080\times0.98 = 1.716 \\[6pt]
+    Q'_{\text{Emma, street-stall}}   &= 1.019\times0.97 + 0.544\times0.99 + 1.033\times0.12 + 1.086\times0.98 + 0.134\times0.13 + 1.180\times0.10 = 2.850 \\
+    Q'_{\text{Emma, upscale}}        &= 1.019\times0.08 + 0.544\times0.11 + 1.033\times0.96 + 1.086\times0.09 + 0.134\times0.07 + 1.180\times0.98 = 2.397 \\[6pt]
+    Q'_{\text{Daniel, street-stall}} &= 0.281\times0.97 + (-0.820)\times0.99 + 1.059\times0.12 + 1.100\times0.98 + 0.966\times0.13 + 1.950\times0.10 = 0.987 \\
+    Q'_{\text{Daniel, upscale}}      &= 0.281\times0.08 + (-0.820)\times0.11 + 1.059\times0.96 + 1.100\times0.09 + 0.966\times0.07 + 1.950\times0.98 = 3.027 \\[6pt]
+    Q'_{\text{Alex, street-stall}}   &= 0.223\times0.97 + 0.296\times0.99 + 0.305\times0.12 + 1.953\times0.98 + 0.159\times0.13 + 1.080\times0.10 = 2.589 \\
+    Q'_{\text{Alex, upscale}}        &= 0.223\times0.08 + 0.296\times0.11 + 0.305\times0.96 + 1.953\times0.09 + 0.159\times0.07 + 1.080\times0.98 = 1.589
     \end{aligned}
     \]
   </div>
 
   <div style="overflow-x:auto;margin:1rem 0;">
     \[
-    Q'_{\text{Frank}} = [5.319,\ 1.716], \quad Q'_{\text{Alex}} = [2.589,\ 1.589]
+    Q' = \begin{bmatrix}
+     & \text{street-stall} & \text{upscale} \\
+    \text{Frank}  & 5.319 & 1.716 \\
+    \text{Emma}   & 2.850 & 2.397 \\
+    \text{Daniel} & 0.987 & 3.027 \\
+    \text{Alex}   & 2.589 & 1.589
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1.5rem;">
+    Before positional encoding, Frank and Alex would have been identical at [2.885, 0.474]. Now Frank is [5.319, 1.716] and Alex is [2.589, 1.589] — completely different.<br><br>
+    Emma and Daniel also shifted. Emma at pos=2 picks up a moderate positive nudge; Daniel at pos=3 gets a large negative d₁ (−0.820) which pulls his street-stall signal down and pushes his upscale signal up to 3.027 — the strongest upscale query at the table.
+  </p>
+
+  <p><strong>K' = X' @ W_K</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    K'_{\text{Frank, knows-street-stall}}  &= 1.821\times0.96 + 1.490\times0.98 + 0.167\times0.10 + 1.969\times0.97 + 0.152\times0.12 + 1.080\times0.09 = 5.271 \\
+    K'_{\text{Frank, knows-upscale}}       &= 1.821\times0.09 + 1.490\times0.11 + 0.167\times0.97 + 1.969\times0.08 + 0.152\times0.96 + 1.080\times0.99 = 1.703 \\[6pt]
+    K'_{\text{Emma, knows-street-stall}}   &= 1.019\times0.96 + 0.544\times0.98 + 1.033\times0.10 + 1.086\times0.97 + 0.134\times0.12 + 1.180\times0.09 = 2.789 \\
+    K'_{\text{Emma, knows-upscale}}        &= 1.019\times0.09 + 0.544\times0.11 + 1.033\times0.97 + 1.086\times0.08 + 0.134\times0.96 + 1.180\times0.99 = 2.538 \\[6pt]
+    K'_{\text{Daniel, knows-street-stall}} &= 0.281\times0.96 + (-0.820)\times0.98 + 1.059\times0.10 + 1.100\times0.97 + 0.966\times0.12 + 1.950\times0.09 = 0.931 \\
+    K'_{\text{Daniel, knows-upscale}}      &= 0.281\times0.09 + (-0.820)\times0.11 + 1.059\times0.97 + 1.100\times0.08 + 0.966\times0.96 + 1.950\times0.99 = 3.908 \\[6pt]
+    K'_{\text{Alex, knows-street-stall}}   &= 0.223\times0.96 + 0.296\times0.98 + 0.305\times0.10 + 1.953\times0.97 + 0.159\times0.12 + 1.080\times0.09 = 2.565 \\
+    K'_{\text{Alex, knows-upscale}}        &= 0.223\times0.09 + 0.296\times0.11 + 0.305\times0.97 + 1.953\times0.08 + 0.159\times0.96 + 1.080\times0.99 = 1.577
+    \end{aligned}
+    \]
+  </div>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    K' = \begin{bmatrix}
+     & \text{knows-street-stall} & \text{knows-upscale} \\
+    \text{Frank}  & 5.271 & 1.703 \\
+    \text{Emma}   & 2.789 & 2.538 \\
+    \text{Daniel} & 0.931 & 3.908 \\
+    \text{Alex}   & 2.565 & 1.577
+    \end{bmatrix}
     \]
   </div>
 
   <p style="font-size:13px;color:#888780;margin-bottom:1rem;">
-    Before positional encoding, both would have been identical at [2.885, 0.474]. Now they're completely different.<br><br>
-    <strong style="color:#555;">Frank</strong> — the large positive nudge in d₀ and d₁ amplified his spicy/cheap/fast features through W_Q, producing a much stronger street-stall craving signal (5.319).<br>
-    <strong style="color:#555;">Alex</strong> — the negative nudge in those same dimensions pulled his street-stall signal down to 2.589 — still street-stall dominant, but noticeably weaker.
+    The same pattern holds in K': Daniel's negative d₁ nudge pushes his knows-street-stall signal down to 0.931 but lifts his knows-upscale signal to 3.908 — the highest upscale knowledge signal at the table. Position didn't change what Daniel knows, but it changed how strongly that knowledge broadcasts.<br><br>
+    <strong style="color:#555;">Frank</strong> — massive street-stall broadcast (5.271). His pos=1 nudge amplified everything.<br>
+    <strong style="color:#555;">Emma</strong> — balanced (2.789 vs 2.538). Her pos=2 nudge is moderate in both directions.<br>
+    <strong style="color:#555;">Daniel</strong> — strongly upscale (3.908). His pos=3 negative d₁ suppressed street-stall and lifted upscale.<br>
+    <strong style="color:#555;">Alex</strong> — street-stall dominant (2.565 vs 1.577), same profile as Frank but positionally dampened.
   </p>
-
-  <p>The same divergence flows through K' and V', then into the alignment scores, softmax weights, and final output. Position 1 and position 4 are now genuinely distinct — not because their preferences changed, but because the model knows where they sit.</p>
 
   <p>Let's look at V specifically, since it carries the actual content that gets blended into the output.</p>
 
