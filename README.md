@@ -12,8 +12,8 @@ Instead of starting with complex formulas, we break everything down into intuiti
 
 Before diving into Transformer, we first build the essential intuition:
 
-1. [What Is Dot Product?](dot-product-demystified.html)  
-2. [How Does a Model Learn?](how_does_a_model_learn.html)
+1. [What Is Dot Product?](https://smartjack007.github.io/transformer/dot-product-demystified.html)  
+2. [How Does a Model Learn?](https://smartjack007.github.io/transformer/how_does_a_model_learn.html)
 
 ---
 
@@ -21,11 +21,11 @@ Before diving into Transformer, we first build the essential intuition:
 
 Now we step into the heart of Transformer:
 
-1. [Attention Is Just Deciding Where to Eat](attention_is_just_deciding_where_to_eat.html)  
-2. [Multi-Head Attention](attention_multihead.html)  
-3. [Positional Encoding](attention_positional_encoding.html)  
-4. [Masked Attention](attention_masked.html)  
-5. [Decoder](attention_decoder.html)
+1. [Attention Is Just Deciding Where to Eat](https://smartjack007.github.io/transformer/attention_is_just_deciding_where_to_eat.html)  
+2. [Multi-Head Attention](https://smartjack007.github.io/transformer/attention_multihead.html)  
+3. [Positional Encoding](https://smartjack007.github.io/transformer/attention_positional_encoding.html)  
+4. [Masked Attention](https://smartjack007.github.io/transformer/attention_masked.html)  
+5. [Decoder](https://smartjack007.github.io/transformer/attention_decoder.html)
 
 ---
 
