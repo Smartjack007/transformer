@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Decoder — Putting It All Together</title>
+<script>MathJax = { tex: { inlineMath: [['\\(','\\)']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #faf9f7;
+    color: #1a1a18;
+    line-height: 1.75;
+    font-size: 16px;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 700px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  h2 { font-size: 18px; font-weight: 600; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  p  { margin-bottom: 1rem; color: #444441; }
+  p strong { color: #1a1a18; }
+  em { color: #666; }
+
+  .subtitle { font-size: 14px; color: #888780; margin-bottom: 2.5rem; line-height: 1.6; }
+  hr { border: none; border-top: 1px solid #e8e6e0; margin: 2rem 0; }
+
+  .callout {
+    border-left: 3px solid #d3d1c7; padding: 12px 16px;
+    margin: 1.25rem 0; border-radius: 0 8px 8px 0;
+    background: #f4f3ee;
+  }
+  .callout p { margin: 0; font-size: 14px; color: #555; }
+  .callout p + p { margin-top: 10px; }
+
+  .formula {
+    background: #f4f3ee; border-radius: 8px; padding: 12px 18px;
+    font-family: "SF Mono", "Fira Code", monospace; font-size: 14px;
+    color: #1a1a18; margin: 1rem 0;
+  }
+
+  /* Step cards */
+  .step-row { display: flex; gap: 12px; margin: 1.25rem 0; flex-wrap: wrap; }
+  .step-card { flex: 1; min-width: 140px; border-radius: 10px; padding: 14px 16px; border: 1px solid transparent; }
+  .step-card.att  { background: #FAEEDA; border-color: #FAC775; }
+  .step-card.res  { background: #EAF3DE; border-color: #C0DD97; }
+  .step-card.ln   { background: #EEEDFE; border-color: #CECBF6; }
+  .step-card.ffn  { background: #E1F5EE; border-color: #9FE1CB; }
+  .step-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .step-card.att .step-label { color: #BA7517; }
+  .step-card.res .step-label { color: #3B6D11; }
+  .step-card.ln  .step-label { color: #534AB7; }
+  .step-card.ffn .step-label { color: #0F6E56; }
+  .step-desc { font-size: 12px; color: #555; line-height: 1.5; }
+
+  /* Flow steps */
+  .flow-steps { border: 1px solid #e8e6e0; border-radius: 12px; overflow: hidden; margin: 1.25rem 0; }
+  .flow-step { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-bottom: 1px solid #e8e6e0; }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-icon {
+    width: 44px; height: 34px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; font-size: 11px;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .flow-step-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .flow-step-sub { font-size: 12px; color: #888780; }
+
+  /* Summary */
+  .summary-box {
+    background: #1a1a18; color: #faf9f7; border-radius: 12px;
+    padding: 24px; margin: 2rem 0; text-align: center;
+  }
+  .summary-box p { color: #c2c0b6; font-size: 15px; margin: 0; line-height: 1.7; }
+  .summary-box p + p { margin-top: 1rem; }
+  .summary-box strong { color: #fff; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>The Decoder — Putting It All Together</h1>
+  <p class="subtitle">Masked attention is only the first step. Each layer also thinks alone, stabilizes itself, and passes the result forward.</p>
+
+  <hr>
+
+  <h2>1. One layer, three steps</h2>
+
+  <p>Everything we have built so far — positional encoding, masked attention — feeds into a single decoder layer. But masked attention is only the first of three steps inside that layer.</p>
+
+  <div class="step-row">
+    <div class="step-card att">
+      <div class="step-label">Masked Attention</div>
+      <div class="step-desc">Each token gathers from those who came before. Part 4.</div>
+    </div>
+    <div class="step-card res">
+      <div class="step-label">Add &amp; Norm</div>
+      <div class="step-desc">Add input back. Normalize. Twice — once after attention, once after FFN.</div>
+    </div>
+    <div class="step-card ffn">
+      <div class="step-label">FFN (MLP)</div>
+      <div class="step-desc">Each token thinks alone. No communication — just computation.</div>
+    </div>
+  </div>
+
+  <p>More precisely, one decoder layer runs:</p>
+
+  <div class="formula">x₁ = LayerNorm( x  + MaskedAttention(x) )</div>
+  <div class="formula">x₂ = LayerNorm( x₁ + FFN(x₁) )</div>
+
+  <p>Two sub-layers, each wrapped in the same pattern: <strong>do something, add the input back, normalize.</strong> The input x is X' — the position-aware feature matrix from Part 3. x₂ is the output that flows to the next decoder layer.</p>
+
+  <p>GPT-2 (small) stacks 12 of these layers. GPT-3 stacks 96. Each layer sees the output of the previous one — the first layer operates on raw positional embeddings, by layer 96 the representations have been refined 96 times.</p>
+
+  <hr>
+
+  <h2>2. Step 1 — Masked Self-Attention</h2>
+
+  <p>We computed this in Part 4. The input is X', the output is:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    \text{Output}_{\text{masked}} = \begin{bmatrix}
+     & \text{info-sichuan} & \text{info-budget} & \text{info-upscale} \\
+    \text{Frank}  & 2.031 & 1.303 & 0.479 \\
+    \text{Emma}   & 2.001 & 1.301 & 0.491 \\
+    \text{Daniel} & 1.540 & 1.302 & 0.912 \\
+    \text{Alex}   & 2.030 & 1.303 & 0.481
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Each row is a weighted blend of what that person was allowed to hear — only from people who spoke before them. Frank heard only himself. Alex heard mostly Frank.</p>
+
+  <div class="callout">
+    <p>In a real transformer, W_V is designed so the attention output has the same dimension as the input — d_model. Here our attention output has 3 dimensions while X' has 6. We treat the attention output as already projected back to 6 dimensions before the residual step — exactly as W_O does in Part 2.</p>
+  </div>
+
+  <hr>
+
+  <h2>3. Step 2 — Residual connection</h2>
+
+  <p>Before we add the residual, let's trace every transformation Alex has been through — from raw features all the way through multi-head masked attention to the W_O projection:</p>
+
+  <style>
+  .timeline { position: relative; margin: 1.5rem 0 2rem; padding-left: 32px; }
+  .timeline::before { content: ''; position: absolute; left: 16px; top: 8px; bottom: 8px; width: 1.5px; background: #e8e6e0; }
+  .tl-step { position: relative; margin-bottom: 0; padding: 10px 0 10px 16px; }
+  .tl-dot { position: absolute; left: -21px; top: 14px; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #d3d1c7; background: #faf9f7; }
+  .tl-bar { display: flex; align-items: flex-start; gap: 12px; }
+  .tl-tag { flex-shrink: 0; margin-top: 2px; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .tl-tag.raw    { background: #f4f3ee; color: #5F5E5A; }
+  .tl-tag.pos    { background: #FAEEDA; color: #854F0B; }
+  .tl-tag.h1     { background: #FAEEDA; color: #BA7517; }
+  .tl-tag.h2     { background: #E6F1FB; color: #185FA5; }
+  .tl-tag.score  { background: #EEEDFE; color: #534AB7; }
+  .tl-tag.output { background: #E1F5EE; color: #0F6E56; }
+  .tl-tag.concat { background: #FCEBEB; color: #A32D2D; }
+  .tl-tag.proj   { background: #f4f3ee; color: #444441; }
+  .tl-tag.resid  { background: #EAF3DE; color: #3B6D11; }
+  .tl-content { flex: 1; }
+  .tl-title { font-size: 13px; font-weight: 600; color: #1a1a18; margin-bottom: 2px; }
+  .tl-val { font-size: 12px; color: #888780; font-family: "SF Mono", "Fira Code", monospace; line-height: 1.6; }
+  </style>
+
+  <div class="timeline">
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag raw">Step 0</div>
+        <div class="tl-content">
+          <div class="tl-title">Raw X — original feature profile</div>
+          <div class="tl-val">[0.98, 0.95, 0.12, 0.97, 0.15, 0.08]<br><span style="color:#b4b2a9">(spicy, cheap, cozy, fast, flavor, vibe)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag pos">Step 1</div>
+        <div class="tl-content">
+          <div class="tl-title">X&prime; = X + P₄ — after positional encoding</div>
+          <div class="tl-val">[0.223, 0.296, 0.305, 1.953, 0.159, 1.080]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag h1">Step 2</div>
+        <div class="tl-content">
+          <div class="tl-title">Q¹ = X&prime; W_Q¹ — Head 1 query</div>
+          <div class="tl-val">[2.589, 1.589]<br><span style="color:#b4b2a9">(street-stall, upscale)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag h1">Step 3</div>
+        <div class="tl-content">
+          <div class="tl-title">K¹ = X&prime; W_K¹ — Head 1 key</div>
+          <div class="tl-val">[2.565, 1.577]<br><span style="color:#b4b2a9">(knows-street-stall, knows-upscale)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag h1">Step 4</div>
+        <div class="tl-content">
+          <div class="tl-title">V¹ = X&prime; W_V¹ — Head 1 value</div>
+          <div class="tl-val">[2.031, 1.303, 0.479]<br><span style="color:#b4b2a9">(info-sichuan, info-budget, info-upscale)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag h2">Step 5</div>
+        <div class="tl-content">
+          <div class="tl-title">Q² = X&prime; W_Q² — Head 2 query</div>
+          <div class="tl-val">[2.398, 1.739]<br><span style="color:#b4b2a9">(budget₁, budget₂)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag h2">Step 6</div>
+        <div class="tl-content">
+          <div class="tl-title">K² = X&prime; W_K² — Head 2 key</div>
+          <div class="tl-val">[2.418, 1.717]<br><span style="color:#b4b2a9">(knows_low, knows_high)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag h2">Step 7</div>
+        <div class="tl-content">
+          <div class="tl-title">V² = X&prime; W_V² — Head 2 value</div>
+          <div class="tl-val">[2.448, 1.750]<br><span style="color:#b4b2a9">(price_info, exp_info)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag score">Step 8</div>
+        <div class="tl-content">
+          <div class="tl-title">Head 1: S¹ → Mask → softmax → A¹</div>
+          <div class="tl-val">S¹ = [11.559, 3.810, 4.426, 6.468]<br>A¹ = [0.993, 0.000, 0.001, 0.006] <span style="color:#b4b2a9">— 99.3% Frank</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag score">Step 9</div>
+        <div class="tl-content">
+          <div class="tl-title">Head 2: S² → Mask → softmax → A²</div>
+          <div class="tl-val">S² = [10.839, 7.587, 6.159, 6.210]<br>A² = [0.945, 0.037, 0.009, 0.009] <span style="color:#b4b2a9">— 94.5% Frank</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag output">Step 10</div>
+        <div class="tl-content">
+          <div class="tl-title">Output¹ = A¹ · V¹ — Head 1 output</div>
+          <div class="tl-val">[2.030, 1.303, 0.481]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag output">Step 11</div>
+        <div class="tl-content">
+          <div class="tl-title">Output² = A² · V² — Head 2 output</div>
+          <div class="tl-val">[4.989, 1.895]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag concat">Step 12</div>
+        <div class="tl-content">
+          <div class="tl-title">Concatenate both heads</div>
+          <div class="tl-val">[2.030, 1.303, 0.481, 4.989, 1.895]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag proj">Step 13</div>
+        <div class="tl-content">
+          <div class="tl-title">Concat · W_O — project back to 6-dim</div>
+          <div class="tl-val">[2.837, 6.435, 1.438, 2.731, 3.906, 2.931]<br><span style="color:#b4b2a9">(spicy, cheap, cozy, fast, flavor, vibe)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot"></div>
+      <div class="tl-bar">
+        <div class="tl-tag resid">Step 14</div>
+        <div class="tl-content">
+          <div class="tl-title">Residual: X&prime; + Attention Output</div>
+          <div class="tl-val">[0.223+2.837, 0.296+6.435, 0.305+1.438, 1.953+2.731, 0.159+3.906, 1.080+2.931]<br>= [3.060, 6.731, 1.743, 4.684, 4.065, 4.011]</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p>Now the residual connection makes clear why it matters: X'_Alex = [0.223, 0.296, 0.305, 1.953, 0.159, 1.080] on its own is small and position-distorted. The attention output [2.837, 6.435, 1.438, 2.731, 3.906, 2.931] carries what Alex learned from the conversation. Adding them together preserves both — Alex's original identity and the new knowledge he gathered.</p>
+
+  <p>After masked attention, we add the original input back:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    x_1^{\text{pre-norm}} = X' + \text{Output}_{\text{masked}}
+    \]
+  </div>
+
+  <p>This is the <strong>residual connection</strong> — also called a skip connection. The input bypasses the sub-layer and gets added directly to its output.</p>
+
+  <p>Two reasons this matters:</p>
+
+  <p><strong>Gradient flow.</strong> In a deep network, gradients can shrink to near-zero as they backpropagate through many layers — the vanishing gradient problem. The residual connection creates a shortcut: gradients can flow directly through the addition, bypassing the sub-layer entirely. This is what makes 96-layer networks trainable.</p>
+
+  <p><strong>Preserving what you knew.</strong> Attention rewrites each person's representation based on what they heard. But not everything needs to be rewritten. The residual connection says: <em>keep your original features, and add whatever attention taught you on top.</em> You listened to Frank, but you didn't forget who you are.</p>
+
+  <p>For Alex:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    X'_{\text{Alex}} = [0.223,\ 0.296,\ 0.305,\ 1.953,\ 0.159,\ 1.080]
+    \]
+    \[
+    \text{Attention Output}_{\text{Alex}} = [2.837,\ 6.435,\ 1.438,\ 2.731,\ 3.906,\ 2.931]
+    \]
+    \[
+    x_{1,\text{Alex}}^{\text{pre-norm}} = [3.060,\ 6.731,\ 1.743,\ 4.684,\ 4.065,\ 4.011]
+    \]
+  </div>
+
+  <p>Alex's vector now contains both his original positional features and what he learned from multi-head masked attention. The addition is literal — the numbers stack.</p>
+
+  <p>For all four people:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    x_1^{\text{pre-norm}} = \begin{bmatrix}
+     & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  & 4.672 & 8.066 & 1.612 & 4.711 & 4.036 & 3.981 \\
+    \text{Emma}   & 3.835 & 7.043 & 2.483 & 3.794 & 4.025 & 4.105 \\
+    \text{Daniel} & 2.420 & 2.052 & 2.741 & 3.153 & 6.177 & 6.748 \\
+    \text{Alex}   & 3.060 & 6.731 & 1.743 & 4.684 & 4.065 & 4.011
+    \end{bmatrix}
+    \]
+  </div>
+
+
+
+  <hr>
+
+  <h2>4. Step 3 — Layer Normalization</h2>
+
+  <p>After the residual addition, we normalize each token's vector independently:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{LayerNorm}(x) = \frac{x - \mu}{\sigma} \cdot \gamma + \beta
+    \]
+  </div>
+
+  <p>where \(\mu\) is the mean of the vector, \(\sigma\) is the standard deviation, and \(\gamma, \beta\) are learned scale and shift parameters (initialized to 1 and 0). For simplicity we set \(\gamma = 1, \beta = 0\).</p>
+
+  <p><strong>Why normalize?</strong></p>
+
+  <p>After the residual addition, each token's vector can have values at very different scales. Consider Alex's vector before normalization:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    x_{1,\text{Alex}}^{\text{pre-norm}} = [3.060,\ 6.731,\ 1.743,\ 4.684,\ 4.065,\ 4.011]
+    \]
+  </div>
+
+  <p>d₁ = 6.731 is the largest, d₂ = 1.743 is the smallest — a difference of nearly 4×. Now send this into FFN's first layer x @ W₁. The contribution of each dimension is its value multiplied by its weight. No matter what W₁ learns, d₁ will always contribute ~4× more than d₂ simply because its value is ~4× larger. The weights can't fix a numerical imbalance that large. d₂'s information gets drowned out — not because it's unimportant, but because its value is small.</p>
+
+  <p>This is the problem: <strong>the magnitude of a value is overriding the significance of a weight.</strong> LayerNorm fixes this by pulling all dimensions to the same scale, so W₁'s weights — not the raw values — decide which dimensions matter.</p>
+
+  <p><strong>How it works — Alex's full calculation:</strong></p>
+
+  <p><strong>Step 1 — Compute mean:</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \mu = \frac{3.060+6.731+1.743+4.684+4.065+4.011}{6} = \frac{24.294}{6} = 4.049
+    \]
+  </div>
+
+  <p><strong>Step 2 — Subtract mean from each dimension:</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    [-0.989,\ 2.682,\ -2.306,\ 0.635,\ 0.016,\ -0.038]
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">All values now centered at 0. But 2.682 is still much larger than −0.038.</p>
+
+  <p><strong>Step 3 — Square each deviation:</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    [0.978,\ 7.193,\ 5.318,\ 0.403,\ 0.000,\ 0.001]
+    \]
+  </div>
+
+  <p><strong>Step 4 — Average the squares (variance):</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \sigma^2 = \frac{0.978+7.193+5.318+0.403+0.000+0.001}{6} = \frac{13.893}{6} = 2.316
+    \]
+  </div>
+
+  <p><strong>Step 5 — Take the square root (standard deviation):</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \sigma = \sqrt{2.316} = 1.522
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">The standard deviation 1.522 is the average spread of these six values — a single ruler that describes how much they vary.</p>
+
+  <p><strong>Step 6 — Divide each deviation by σ:</strong></p>
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \frac{[-0.989,\ 2.682,\ -2.306,\ 0.635,\ 0.016,\ -0.038]}{1.522} = [-0.650,\ 1.762,\ -1.516,\ 0.417,\ 0.011,\ -0.025]
+    \]
+  </div>
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">Every dimension is now expressed in units of "how many standard deviations from the mean." The relative ordering is unchanged — d₁ is still the highest, d₂ is still the lowest — but the absolute magnitudes are on a common scale. W₁'s weights can finally do their job fairly.</p>
+
+  <p><strong>Why per-token?</strong> LayerNorm normalizes across the feature dimension — one token's values across all dimensions. BatchNorm normalizes across the batch dimension. For language models, LayerNorm is preferred because each token can be processed independently, regardless of batch size.</p>
+
+  <p>For all four people after LayerNorm:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    x_1 = \begin{bmatrix}
+     & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  &  0.142 &  1.731 & -1.638 &  0.398 & -0.328 & -0.305 \\
+    \text{Emma}   &  0.198 &  1.724 & -1.571 &  0.421 & -0.387 & -0.385 \\
+    \text{Daniel} & -0.301 &  1.498 & -1.502 &  0.681 & -0.189 & -0.187 \\
+    \text{Alex}   & -0.650 &  1.762 & -1.516 &  0.417 &  0.011 & -0.025
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Each row now has mean 0 and standard deviation 1. Ready for FFN.</p>
+
+  <hr>
+
+  <h2>5. Step 4 — Feed-Forward Network (MLP)</h2>
+
+  <p>The second sub-layer is a Feed-Forward Network — two linear transformations with a ReLU activation in between:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{FFN}(x) = \text{ReLU}(x W_1 + b_1)\, W_2 + b_2
+    \]
+  </div>
+
+  <p>Unlike attention, <strong>FFN processes each token independently.</strong> Every row of x₁ goes through the exact same two weight matrices, but separately — no token looks at any other token here.</p>
+
+  <p><strong>What are b₁ and b₂?</strong> They are <strong>bias terms</strong> — one per neuron, added after the linear transformation. W₁ scales and rotates the input, but it always passes through the origin: if the input is a zero vector, the output is also zero. b₁ adds a fixed offset to each neuron, shifting the point at which ReLU activates. Without b₁, a neuron only fires when xW₁ &gt; 0. With b₁, the threshold becomes xW₁ &gt; −b₁ — the model can learn how easily each neuron triggers. b₂ does the same after the second layer. In our example we set b₁ = 0 and b₂ = 0 to keep the arithmetic clean and focus on the core mechanics. In a real trained model both are non-zero learned parameters.</p>
+
+  <div class="callout">
+    <p>Attention is the conversation — each person gathers information from others. FFN is the thinking that happens after — each person privately processes what they've collected and refines their own representation. No more communication, just computation.</p>
+  </div>
+
+  <p>In real transformers, FFN expands the dimension by 4× before compressing back: d_model → 4×d_model → d_model. For our example we use 6 → 3 → 6 to keep numbers manageable.</p>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">W₁ and W₂ are FFN-exclusive weight matrices — they appear here for the first time in this series. They have nothing to do with W_Q, W_K, W_V, or W_O from the attention layers. Every sub-layer in a transformer has its own independent set of weights, all learned separately during training.</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    W_1 = \begin{bmatrix}
+    0.8 & 0.1 & 0.3 \\
+    0.2 & 0.7 & 0.1 \\
+    0.1 & 0.2 & 0.8 \\
+    0.9 & 0.1 & 0.2 \\
+    0.1 & 0.8 & 0.1 \\
+    0.2 & 0.1 & 0.7
+    \end{bmatrix} \in \mathbb{R}^{6\times3}
+    \qquad
+    W_2 = \begin{bmatrix}
+    0.7 & 0.2 & 0.1 & 0.8 & 0.1 & 0.2 \\
+    0.1 & 0.8 & 0.2 & 0.1 & 0.7 & 0.1 \\
+    0.2 & 0.1 & 0.7 & 0.2 & 0.1 & 0.8
+    \end{bmatrix} \in \mathbb{R}^{3\times6}
+    \]
+  </div>
+
+  <p>Computing FFN for Alex step by step:</p>
+
+  <p><strong>First layer — x₁ @ W₁:</strong></p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    h_1 &= (-0.650)\times0.8 + 1.762\times0.2 + (-1.516)\times0.1 + 0.417\times0.9 + 0.011\times0.1 + (-0.025)\times0.2 \\
+        &= -0.520+0.352-0.152+0.375+0.001-0.005 = 0.051 \\[4pt]
+    h_2 &= (-0.650)\times0.1 + 1.762\times0.7 + (-1.516)\times0.2 + 0.417\times0.1 + 0.011\times0.8 + (-0.025)\times0.1 \\
+        &= -0.065+1.233-0.303+0.042+0.009-0.003 = 0.913 \\[4pt]
+    h_3 &= (-0.650)\times0.3 + 1.762\times0.1 + (-1.516)\times0.8 + 0.417\times0.2 + 0.011\times0.1 + (-0.025)\times0.7 \\
+        &= -0.195+0.176-1.213+0.083+0.001-0.018 = -1.166
+    \end{aligned}
+    \]
+  </div>
+
+  <p><strong>Apply ReLU — set negative values to 0:</strong></p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \text{ReLU}([0.051,\ 0.913,\ -1.166]) = [0.051,\ 0.913,\ 0]
+    \]
+  </div>
+
+  <p><strong>Second layer — ReLU(h) @ W₂:</strong></p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    \text{FFN}_{\text{Alex}, d_0} &= 0.051\times0.7 + 0.913\times0.1 + 0\times0.2 = 0.036+0.091 = 0.127 \\
+    \text{FFN}_{\text{Alex}, d_1} &= 0.051\times0.2 + 0.913\times0.8 + 0\times0.1 = 0.010+0.730 = 0.740 \\
+    \text{FFN}_{\text{Alex}, d_2} &= 0.051\times0.1 + 0.913\times0.2 + 0\times0.7 = 0.005+0.183 = 0.188 \\
+    \text{FFN}_{\text{Alex}, d_3} &= 0.051\times0.8 + 0.913\times0.1 + 0\times0.2 = 0.041+0.091 = 0.132 \\
+    \text{FFN}_{\text{Alex}, d_4} &= 0.051\times0.1 + 0.913\times0.7 + 0\times0.1 = 0.005+0.639 = 0.644 \\
+    \text{FFN}_{\text{Alex}, d_5} &= 0.051\times0.2 + 0.913\times0.1 + 0\times0.8 = 0.010+0.091 = 0.101
+    \end{aligned}
+    \]
+  </div>
+
+  <p>FFN output for all four people:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    \text{FFN}(x_1) = \begin{bmatrix}
+     & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  & 0.187 & 0.749 & 0.187 & 0.154 & 0.625 & 0.094 \\
+    \text{Emma}   & 0.190 & 0.762 & 0.190 & 0.157 & 0.636 & 0.095 \\
+    \text{Daniel} & 0.163 & 0.651 & 0.163 & 0.133 & 0.543 & 0.081 \\
+    \text{Alex}   & 0.127 & 0.740 & 0.188 & 0.132 & 0.644 & 0.101
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">This time ReLU kept h₁ and h₂ active for Alex (both positive), zeroing only h₃. Different tokens activate different hidden dimensions — this sparsity is ReLU's contribution to the network's expressiveness.</p>
+
+  <hr>
+
+  <h2>6. Step 5 — Residual + LayerNorm again</h2>
+
+  <p>The same pattern repeats after FFN: add the input back, then normalize.</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    x_2^{\text{pre-norm}} = x_1 + \text{FFN}(x_1)
+    \]
+  </div>
+
+  <p>For Alex:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    x_{1,\text{Alex}}             &= [-0.650,\ 1.762,\ -1.516,\ 0.417,\ 0.011,\ -0.025] \\
+    \text{FFN}(x_{1,\text{Alex}}) &= [0.127,\ 0.740,\ 0.188,\ 0.132,\ 0.644,\ 0.101] \\
+    x_{2,\text{Alex}}^{\text{pre-norm}} &= [-0.523,\ 2.502,\ -1.328,\ 0.549,\ 0.655,\ 0.076]
+    \end{aligned}
+    \]
+  </div>
+
+  <p>For all four people:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    x_2^{\text{pre-norm}} = \begin{bmatrix}
+     & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  &  0.329 & 2.480 & -1.451 & 0.552 & 0.297 & -0.211 \\
+    \text{Emma}   &  0.388 & 2.486 & -1.381 & 0.578 & 0.249 & -0.290 \\
+    \text{Daniel} & -0.138 & 2.149 & -1.339 & 0.814 & 0.354 & -0.106 \\
+    \text{Alex}   & -0.523 & 2.502 & -1.328 & 0.549 & 0.655 &  0.076
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>LayerNorm for Alex:</p>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    \begin{aligned}
+    \mu &= \frac{-0.523+2.502+(-1.328)+0.549+0.655+0.076}{6} = \frac{1.931}{6} = 0.322 \\[6pt]
+    \text{deviations} &= [-0.845,\ 2.180,\ -1.650,\ 0.227,\ 0.333,\ -0.246] \\
+    \sigma &= \sqrt{\frac{0.714+4.752+2.723+0.052+0.111+0.061}{6}} = \sqrt{1.402} = 1.184 \\[6pt]
+    x_{2,\text{Alex}} &= \frac{[-0.845,\ 2.180,\ -1.650,\ 0.227,\ 0.333,\ -0.246]}{1.184} \\
+    &= [-0.714,\ 1.841,\ -1.394,\ 0.192,\ 0.281,\ -0.208]
+    \end{aligned}
+    \]
+  </div>
+
+  <p>Final output of one complete decoder layer:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    x_2 = \begin{bmatrix}
+     & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  & -0.052 &  1.857 & -1.512 & 0.176 & -0.052 & -0.417 \\
+    \text{Emma}   &  0.012 &  1.871 & -1.468 & 0.198 & -0.152 & -0.461 \\
+    \text{Daniel} & -0.401 &  1.763 & -1.423 & 0.428 &  0.021 & -0.388 \\
+    \text{Alex}   & -0.714 &  1.841 & -1.394 & 0.192 &  0.281 & -0.208
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p>Compare with X' that entered this layer:</p>
+
+  <div style="overflow-x:auto;margin:1.5rem 0;">
+    \[
+    X' = \begin{bmatrix}
+     & d_0 & d_1 & d_2 & d_3 & d_4 & d_5 \\
+    \text{Frank}  &  1.821 &  1.490 & 0.167 & 1.969 & 0.152 & 1.080 \\
+    \text{Emma}   &  1.019 &  0.544 & 1.033 & 1.086 & 0.134 & 1.180 \\
+    \text{Daniel} &  0.281 & -0.820 & 1.059 & 1.100 & 0.966 & 1.950 \\
+    \text{Alex}   &  0.223 &  0.296 & 0.305 & 1.953 & 0.159 & 1.080
+    \end{bmatrix}
+    \]
+  </div>
+
+  <p style="font-size:13px;color:#888780;margin-bottom:1rem;">Compare with X' that entered this layer — the structure has shifted significantly. d₁ now dominates for all four people, a pattern that emerged from the combination of multi-head attention, residual connections, and FFN processing. The layer has done real work.</p>
+
+  <hr>
+
+  <h2>7. Stacking layers</h2>
+
+  <p>x₂ is the output of one decoder layer. In GPT, this becomes the input to the next decoder layer — which runs the exact same sequence of operations.</p>
+
+  <style>
+  .layer-block {
+    border: 0.5px solid var(--color-border-tertiary, #e8e6e0);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.3s, border-color 0.3s;
+    background: var(--color-background-primary, #fff);
+  }
+  .layer-block.active { background: #EEEDFE; border-color: #AFA9EC; }
+  .layer-block.done   { background: #EAF3DE; border-color: #C0DD97; }
+  .layer-num { font-size: 11px; font-weight: 500; color: var(--color-text-secondary, #888780); width: 52px; flex-shrink: 0; }
+  .layer-block.active .layer-num { color: #534AB7; }
+  .layer-block.done   .layer-num { color: #3B6D11; }
+  .layer-steps { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .step-pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px;
+    background: var(--color-background-secondary, #f4f3ee);
+    color: var(--color-text-secondary, #888780);
+    border: 0.5px solid var(--color-border-tertiary, #e8e6e0);
+  }
+  .layer-block.active .step-pill { background: #CECBF6; color: #3C3489; border-color: #AFA9EC; }
+  .layer-block.done   .step-pill { background: #C0DD97; color: #27500A; border-color: #97C459; }
+  .layer-arrow { font-size: 11px; color: var(--color-text-secondary, #888780); text-align: center; padding: 2px 0; }
+  .layer-arrow.active-arrow { color: #534AB7; font-weight: 500; }
+  .layer-arrow.done-arrow   { color: #3B6D11; }
+  .output-chip {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px;
+    background: var(--color-background-secondary, #f4f3ee);
+    color: var(--color-text-secondary, #888780);
+    border: 0.5px solid var(--color-border-tertiary, #e8e6e0);
+    flex-shrink: 0;
+  }
+  .layer-block.done   .output-chip { background: #EAF3DE; color: #3B6D11; border-color: #C0DD97; }
+  .layer-block.active .output-chip { background: #EEEDFE; color: #534AB7; border-color: #CECBF6; }
+  </style>
+
+  <div style="display:flex;gap:24px;align-items:flex-start;margin:1.5rem 0;">
+    <div style="flex:1;min-width:0;">
+      <div id="sl-stack" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div style="width:200px;flex-shrink:0;">
+      <div style="background:var(--color-background-secondary,#f4f3ee);border:0.5px solid var(--color-border-tertiary,#e8e6e0);border-radius:12px;padding:1rem;min-height:180px;">
+        <p style="font-size:12px;color:var(--color-text-secondary,#888780);margin:0 0 6px;">current input</p>
+        <p id="sl-input" style="font-size:13px;font-weight:500;color:var(--color-text-primary,#1a1a18);margin:0 0 14px;">x⁽⁰⁾ = X′</p>
+        <p style="font-size:12px;color:var(--color-text-secondary,#888780);margin:0 0 6px;">output</p>
+        <p id="sl-output" style="font-size:13px;font-weight:500;color:var(--color-text-primary,#1a1a18);margin:0 0 14px;">—</p>
+        <p style="font-size:12px;color:var(--color-text-secondary,#888780);margin:0 0 6px;">what this layer learns</p>
+        <p id="sl-desc" style="font-size:12px;color:var(--color-text-primary,#1a1a18);margin:0;line-height:1.6;">raw features, positional patterns</p>
+      </div>
+      <button id="sl-btn" onclick="slStep()" style="margin-top:10px;width:100%;padding:8px;font-size:13px;cursor:pointer;border-radius:8px;">next layer →</button>
+      <button onclick="slReset()" style="margin-top:6px;width:100%;padding:8px;font-size:13px;cursor:pointer;border-radius:8px;">reset</button>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var TOTAL = 6;
+    var descs = [
+      "surface-level alignment, basic positional patterns",
+      "phrase-level structure, local dependencies",
+      "syntactic roles begin to emerge",
+      "semantic relationships, entity linking",
+      "abstract concept formation",
+      "high-level meaning, context-aware representations"
+    ];
+    var cur = -1;
+
+    function buildStack() {
+      var stack = document.getElementById('sl-stack');
+      stack.innerHTML = '';
+      var inputDiv = document.createElement('div');
+      inputDiv.style.cssText = 'font-size:12px;color:var(--color-text-secondary,#888780);padding:4px 0 6px;';
+      inputDiv.textContent = 'x⁽⁰⁾ = X′  (positional encoding output)';
+      stack.appendChild(inputDiv);
+      for (var i = 0; i < TOTAL; i++) {
+        var arrow = document.createElement('div');
+        arrow.className = 'layer-arrow' + (i < cur ? ' done-arrow' : i === cur ? ' active-arrow' : '');
+        arrow.textContent = '↓';
+        stack.appendChild(arrow);
+        var block = document.createElement('div');
+        block.className = 'layer-block' + (i === cur ? ' active' : i < cur ? ' done' : '');
+        var inputLabel = i === 0 ? 'x⁽⁰⁾ = X′' : 'x⁽'+i+'⁾ (layer '+(i)+' output)';
+        block.innerHTML =
+          '<span class="layer-num">layer ' + (i+1) + (i===TOTAL-1?' (last)':'') + '</span>' +
+          '<div class="layer-steps">' +
+            '<span class="step-pill">' + inputLabel + '</span>' +
+            '<span class="step-pill">add & norm</span>' +
+            '<span class="step-pill">FFN</span>' +
+            '<span class="step-pill">add & norm</span>' +
+          '</div>' +
+          '<span class="output-chip">' + (i <= cur ? '→ x⁽'+(i+1)+'⁾' : '') + '</span>';
+        stack.appendChild(block);
+      }
+      var finalDiv = document.createElement('div');
+      finalDiv.style.cssText = 'font-size:12px;padding:6px 0 4px;';
+      finalDiv.style.color = cur >= TOTAL-1 ? '#3B6D11' : 'var(--color-text-secondary,#888780)';
+      finalDiv.textContent = cur >= TOTAL-1 ? '✓  x⁽⁶⁾  →  final prediction' : 'x⁽⁶⁾  →  final prediction';
+      stack.appendChild(finalDiv);
+    }
+
+    function updatePanel() {
+      document.getElementById('sl-input').textContent  = cur <= 0 ? 'x⁽⁰⁾ = X′' : 'x⁽'+cur+'⁾';
+      document.getElementById('sl-output').textContent = cur < 0 ? '—' : 'x⁽'+(cur+1)+'⁾';
+      document.getElementById('sl-desc').textContent   = cur < 0 ? 'raw features, positional patterns' : descs[cur];
+      var btn = document.getElementById('sl-btn');
+      if (cur >= TOTAL-1) { btn.textContent='done ✓'; btn.disabled=true; btn.style.opacity='0.4'; btn.style.cursor='default'; }
+    }
+
+    window.slStep = function() { if (cur < TOTAL-1) { cur++; buildStack(); updatePanel(); } };
+    window.slReset = function() {
+      cur = -1;
+      var btn = document.getElementById('sl-btn');
+      btn.textContent='next layer →'; btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer';
+      buildStack(); updatePanel();
+    };
+
+    buildStack(); updatePanel();
+  })();
+  </script>
+
+  <div style="overflow-x:auto;margin:1rem 0;">
+    \[
+    x^{(0)} \xrightarrow{\text{layer 1}} x^{(1)} \xrightarrow{\text{layer 2}} x^{(2)} \xrightarrow{\ \cdots\ } x^{(L)}
+    \]
+  </div>
+
+  <p>where \(x^{(0)} = X'\) and L is the total number of layers.</p>
+
+  <p>A few things stay constant across all layers:</p>
+
+  <p><strong>The weight matrices are different in every layer.</strong> W_Q, W_K, W_V, W₁, W₂ are all learned separately per layer. Layer 1's attention weights have nothing to do with layer 12's.</p>
+
+  <p><strong>The shape stays the same.</strong> Every layer takes d_model dimensions in and produces d_model dimensions out. The architecture is a clean pipeline.</p>
+
+  <p><strong>LayerNorm resets the scale after every sub-layer.</strong> No matter how large the values get inside a layer, the output is always normalized before passing forward.</p>
+
+  <div class="callout">
+    <p>Why does stacking help? A single attention layer can capture one level of relationships — who aligns with whom on the surface features. A second layer can capture relationships between those relationships — patterns that only emerge once the first layer has done its work. Deep networks learn hierarchical structure, and language has exactly that: words → phrases → sentences → discourse.</p>
+  </div>
+
+  <hr>
+
+  <h2>8. The full picture</h2>
+
+  <p>One complete GPT decoder layer, from input to output:</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#f4f3ee;color:#888780;">X'</div>
+      <div>
+        <div class="flow-step-title">Input — position-aware features</div>
+        <div class="flow-step-sub">X' = X + P from Part 3 — each row carries both content and position</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#FAEEDA;color:#BA7517;">Att</div>
+      <div>
+        <div class="flow-step-title">Masked Self-Attention</div>
+        <div class="flow-step-sub">Each token attends to itself and all prior tokens — Part 4</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EAF3DE;color:#3B6D11;">+</div>
+      <div>
+        <div class="flow-step-title">Residual connection — x + Attention(x)</div>
+        <div class="flow-step-sub">Add the original input back — preserve what was known, stack what was learned</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EEEDFE;color:#534AB7;">LN</div>
+      <div>
+        <div class="flow-step-title">Layer Normalization</div>
+        <div class="flow-step-sub">Normalize each token's vector to mean 0, std 1 — reset the scale</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E1F5EE;color:#0F6E56;">FFN</div>
+      <div>
+        <div class="flow-step-title">Feed-Forward Network (MLP)</div>
+        <div class="flow-step-sub">Each token thinks alone — ReLU(x W₁) W₂ — expand, activate, compress</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EAF3DE;color:#3B6D11;">+</div>
+      <div>
+        <div class="flow-step-title">Residual connection — x₁ + FFN(x₁)</div>
+        <div class="flow-step-sub">Add again — preserve the normalized features, stack the FFN refinement</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#EEEDFE;color:#534AB7;">LN</div>
+      <div>
+        <div class="flow-step-title">Layer Normalization again</div>
+        <div class="flow-step-sub">Normalize once more — x₂ is ready for the next layer</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon" style="background:#E6F1FB;color:#185FA5;">×L</div>
+      <div>
+        <div class="flow-step-title">Repeat L times</div>
+        <div class="flow-step-sub">GPT-2: 12 layers. GPT-3: 96 layers. Each refines the representations further.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-box">
+    <p>Attention gathers. Residual preserves. LayerNorm stabilizes. FFN refines. Then repeat.</p>
+    <p style="margin-top:1rem;">Frank spoke first and anchored the conversation. By the time x₂ emerges from layer 1, his influence has been gathered by attention, stabilized by LayerNorm, and further processed by FFN. In layer 2, the same thing happens again — but now operating on richer representations. By layer 96, the model has refined its understanding of the sequence <strong>96 times</strong>. That depth is where the intelligence lives.</p>
+  </div>
+
+</div>
+</body>
+</html>
